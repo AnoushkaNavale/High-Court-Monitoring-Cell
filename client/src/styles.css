@@ -238,6 +238,17 @@ button {
   z-index: 1;
 }
 
+.landing-panel {
+  width: min(920px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 22px;
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  text-align: center;
+}
+
 .landing-kicker {
   display: inline-flex;
   align-items: center;
@@ -254,16 +265,21 @@ button {
   color: #c0c5ce;
 }
 
-.landing-content h1 {
+.landing-panel h1 {
   max-width: 900px;
   margin: 0;
-  font-size: clamp(30px, 4.8vw, 56px);
-  line-height: 1.02;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.04;
   letter-spacing: 0;
 }
 
-.landing-content p {
-  max-width: 680px;
+.encrypted-title {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.landing-panel p {
+  max-width: 720px;
   margin: 0;
   color: #c0c5ce;
   font-size: 18px;
@@ -286,6 +302,7 @@ button {
   background: #3b4048;
   border: 1px solid #5b626c;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+  justify-self: center;
 }
 
 .enter-button:hover {

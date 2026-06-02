@@ -1,12 +1,12 @@
 import { ArrowRight, Shield } from "lucide-react";
 import EncryptedText from "../components/EncryptedText.jsx";
-import Spotlight from "../components/Spotlight.jsx";
+import GradientBackground from "../components/GradientBackground.jsx";
 
 export default function Landing({ onEnter }) {
   return (
     <main className="landing-screen">
-      <Spotlight />
-      <section className="landing-content">
+      <GradientBackground />
+      <section className="landing-panel">
         <div className="landing-kicker">
           <Shield size={18} />
           Office of Joint CP, West Zone
@@ -15,6 +15,7 @@ export default function Landing({ onEnter }) {
         <h1>
           <EncryptedText
             text="High Court Monitoring Cell"
+            className="encrypted-title"
             revealDelayMs={68}
             flipDelayMs={48}
             encryptedClassName="encrypted-char"
