@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hcmc-postgres
+    environment:
+      POSTGRES_USER: hcmc
+      POSTGRES_PASSWORD: hcmc_password
+      POSTGRES_DB: hcmc
+    ports:
+      - "55432:5432"
+    volumes:
+      - hcmc_pgdata:/var/lib/postgresql/data
+
+volumes:
+  hcmc_pgdata:
