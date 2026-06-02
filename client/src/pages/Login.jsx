@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { apiPost } from "../lib/api.js";
-import Spotlight from "../components/Spotlight.jsx";
+import GradientBackground from "../components/GradientBackground.jsx";
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
 
   return (
     <main className="login-screen">
-      <Spotlight />
+      <GradientBackground />
       <section className="login-panel">
         <div className="login-mark">
           <ShieldCheck size={38} />
