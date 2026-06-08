@@ -72,3 +72,26 @@ CREATE TABLE IF NOT EXISTS master_hc_register (
 CREATE INDEX IF NOT EXISTS idx_hc_register_scope ON master_hc_register (division_id, sub_division_id, police_station_id);
 CREATE INDEX IF NOT EXISTS idx_hc_register_hearing ON master_hc_register (next_hearing_date);
 CREATE INDEX IF NOT EXISTS idx_hc_register_risk ON master_hc_register (risk_level);
+
+CREATE TABLE IF NOT EXISTS daily_cause_list (
+  id SERIAL PRIMARY KEY,
+  listing_date DATE NOT NULL,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  case_type TEXT,
+  police_station_id INTEGER REFERENCES police_stations(police_station_id),
+  io_informed BOOLEAN NOT NULL DEFAULT FALSE,
+  dcp_informed BOOLEAN NOT NULL DEFAULT FALSE,
+  spp_informed BOOLEAN NOT NULL DEFAULT FALSE,
+  file_ready BOOLEAN NOT NULL DEFAULT FALSE,
+  objections_filed BOOLEAN NOT NULL DEFAULT FALSE,
+  court_hall TEXT,
+  outcome TEXT,
+  next_hearing_date DATE,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (listing_date, case_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_cause_list_date ON daily_cause_list (listing_date);
+CREATE INDEX IF NOT EXISTS idx_daily_cause_list_ps ON daily_cause_list (police_station_id);

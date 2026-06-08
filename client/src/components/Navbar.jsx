@@ -1,4 +1,4 @@
-import { BarChart3, FileText, LayoutDashboard, LogOut, Shield } from "lucide-react";
+import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, Shield } from "lucide-react";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
   return (
@@ -19,6 +19,10 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         <button className={page === "register" ? "active" : ""} onClick={() => setPage("register")}>
           <FileText size={18} />
           Master Register
+        </button>
+        <button className={page === "dailyCauseList" ? "active" : ""} onClick={() => setPage("dailyCauseList")}>
+          <CalendarDays size={18} />
+          Daily Cause List
         </button>
         <button disabled title="Coming in the next phase">
           <BarChart3 size={18} />

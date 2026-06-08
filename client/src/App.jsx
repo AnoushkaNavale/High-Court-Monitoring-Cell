@@ -3,6 +3,7 @@ import Login from "./pages/Login.jsx";
 import Landing from "./pages/Landing.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import MasterHCRegister from "./pages/MasterHCRegister.jsx";
+import DailyCauseList from "./pages/DailyCauseList.jsx";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { apiGet, getStoredSession, setStoredSession } from "./lib/api.js";
@@ -56,6 +57,7 @@ export default function App() {
         <main className="content">
           {page === "dashboard" && <Dashboard token={session.token} />}
           {page === "register" && <MasterHCRegister token={session.token} />}
+          {page === "dailyCauseList" && <DailyCauseList token={session.token} />}
         </main>
       </div>
     </ProtectedRoute>

@@ -8,6 +8,7 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 const authRoutes = require("../routes/authRoutes");
 const masterRoutes = require("../routes/masterRoutes");
 const caseRoutes = require("../routes/caseRoutes");
+const dailyCauseListRoutes = require("../routes/dailyCauseListRoutes");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/masters", masterRoutes);
 app.use("/api/cases", caseRoutes);
+app.use("/api/daily-cause-list", dailyCauseListRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

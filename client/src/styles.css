@@ -612,6 +612,57 @@ button:disabled {
   width: auto;
 }
 
+.compact-check {
+  padding-top: 0;
+}
+
+.check-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #1d3553;
+  border-radius: 8px;
+  background: #071422;
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.notification-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 320px) minmax(260px, auto) auto;
+  align-items: end;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+  background: #10243a;
+  border: 1px solid #1d3553;
+  border-radius: 8px;
+}
+
+.notification-panel h2 {
+  margin-bottom: 4px;
+}
+
+.notification-panel p {
+  margin-bottom: 0;
+  color: #b7c5d8;
+}
+
+.recipient-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 9px;
+}
+
 .filters {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 220px 160px auto;
@@ -726,7 +777,9 @@ tr.row-yellow {
 
   .stat-grid,
   .case-form,
-  .filters {
+  .filters,
+  .notification-panel,
+  .check-grid {
     grid-template-columns: 1fr;
   }
 }
