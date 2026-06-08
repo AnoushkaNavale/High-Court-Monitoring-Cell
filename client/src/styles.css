@@ -759,6 +759,15 @@ tr.row-yellow {
   background: #18324e;
 }
 
+.icon-btn.warn {
+  background: #4a1118;
+}
+
+.action-stack {
+  display: flex;
+  gap: 8px;
+}
+
 .empty {
   text-align: center;
   color: #b7c5d8;

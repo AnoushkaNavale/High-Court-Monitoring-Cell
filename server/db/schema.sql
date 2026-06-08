@@ -95,3 +95,26 @@ CREATE TABLE IF NOT EXISTS daily_cause_list (
 
 CREATE INDEX IF NOT EXISTS idx_daily_cause_list_date ON daily_cause_list (listing_date);
 CREATE INDEX IF NOT EXISTS idx_daily_cause_list_ps ON daily_cause_list (police_station_id);
+
+CREATE TABLE IF NOT EXISTS compliance_tracker (
+  id SERIAL PRIMARY KEY,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  direction_date DATE NOT NULL,
+  nature_of_direction TEXT,
+  compliance_required TEXT NOT NULL,
+  deadline DATE NOT NULL,
+  responsible_officer TEXT,
+  reminder_sent_date DATE,
+  compliance_filed_date DATE,
+  delay_days INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Filed', 'Delayed', 'Escalated', 'Closed')),
+  escalated BOOLEAN NOT NULL DEFAULT FALSE,
+  delay_reason TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_compliance_tracker_case ON compliance_tracker (case_no);
+CREATE INDEX IF NOT EXISTS idx_compliance_tracker_deadline ON compliance_tracker (deadline);
+CREATE INDEX IF NOT EXISTS idx_compliance_tracker_status ON compliance_tracker (status);

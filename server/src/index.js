@@ -9,6 +9,7 @@ const authRoutes = require("../routes/authRoutes");
 const masterRoutes = require("../routes/masterRoutes");
 const caseRoutes = require("../routes/caseRoutes");
 const dailyCauseListRoutes = require("../routes/dailyCauseListRoutes");
+const complianceRoutes = require("../routes/complianceRoutes");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -24,6 +25,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/masters", masterRoutes);
 app.use("/api/cases", caseRoutes);
 app.use("/api/daily-cause-list", dailyCauseListRoutes);
+app.use("/api/compliance", complianceRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

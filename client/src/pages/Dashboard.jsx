@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, FileText } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, FileText } from "lucide-react";
 import { apiGet } from "../lib/api.js";
 
 export default function Dashboard({ token }) {
   const [cases, setCases] = useState([]);
+  const [complianceSummary, setComplianceSummary] = useState({ pending: 0, escalated: 0, due_soon: 0 });
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiGet("/cases", token)
-      .then((data) => setCases(data.cases || []))
+    Promise.all([apiGet("/cases", token), apiGet("/compliance/summary", token)])
+      .then(([caseData, complianceData]) => {
+        setCases(caseData.cases || []);
+        setComplianceSummary(complianceData.summary || { pending: 0, escalated: 0, due_soon: 0 });
+      })
       .catch((err) => setError(err.message));
   }, [token]);
 
@@ -27,7 +31,7 @@ export default function Dashboard({ token }) {
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p>Phase 1 overview from the Master HC Register.</p>
+          <p>Operational overview from register, hearings, and compliance modules.</p>
         </div>
       </div>
       {error && <div className="error">{error}</div>}
@@ -36,6 +40,9 @@ export default function Dashboard({ token }) {
         <Stat icon={<AlertTriangle />} label="Critical Red risk" value={stats.critical} tone="red" />
         <Stat icon={<CalendarClock />} label="Hearings today" value={stats.hearingsToday} tone="blue" />
         <Stat icon={<CheckCircle2 />} label="Stayed/interim order" value={stats.stayed} tone="orange" />
+        <Stat icon={<ClipboardCheck />} label="Pending compliance" value={complianceSummary.pending || 0} tone="orange" />
+        <Stat icon={<AlertTriangle />} label="Due within 48 hours" value={complianceSummary.due_soon || 0} tone="red" />
+        <Stat icon={<AlertTriangle />} label="Escalated compliance" value={complianceSummary.escalated || 0} tone="red" />
       </div>
 
       <div className="panel">

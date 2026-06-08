@@ -9,7 +9,7 @@
     "start": "node src/index.js",
     "db:schema": "node scripts/applySchema.js",
     "db:seed": "node scripts/seedDivisionData.js",
-    "check": "node --check src/index.js && node --check controllers/authController.js && node --check controllers/caseController.js && node --check controllers/dailyCauseListController.js && node --check routes/caseRoutes.js && node --check routes/dailyCauseListRoutes.js"
+    "check": "node --check src/index.js && node --check controllers/authController.js && node --check controllers/caseController.js && node --check controllers/dailyCauseListController.js && node --check controllers/complianceController.js && node --check routes/caseRoutes.js && node --check routes/dailyCauseListRoutes.js && node --check routes/complianceRoutes.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
