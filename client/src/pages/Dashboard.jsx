@@ -1,17 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, FileText } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, FileSignature, FileText, UserCheck } from "lucide-react";
 import { apiGet } from "../lib/api.js";
 
 export default function Dashboard({ token }) {
   const [cases, setCases] = useState([]);
   const [complianceSummary, setComplianceSummary] = useState({ pending: 0, escalated: 0, due_soon: 0 });
+  const [followupSummary, setFollowupSummary] = useState({
+    affidavitPending: 0,
+    contemptOpen: 0,
+    contemptUrgent: 0,
+    appearanceUnconfirmed: 0,
+    appearanceToday: 0,
+  });
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([apiGet("/cases", token), apiGet("/compliance/summary", token)])
-      .then(([caseData, complianceData]) => {
+    Promise.all([apiGet("/cases", token), apiGet("/compliance/summary", token), apiGet("/followups/summary", token)])
+      .then(([caseData, complianceData, followupData]) => {
         setCases(caseData.cases || []);
         setComplianceSummary(complianceData.summary || { pending: 0, escalated: 0, due_soon: 0 });
+        setFollowupSummary(followupData.summary || {});
       })
       .catch((err) => setError(err.message));
   }, [token]);
@@ -43,6 +51,9 @@ export default function Dashboard({ token }) {
         <Stat icon={<ClipboardCheck />} label="Pending compliance" value={complianceSummary.pending || 0} tone="orange" />
         <Stat icon={<AlertTriangle />} label="Due within 48 hours" value={complianceSummary.due_soon || 0} tone="red" />
         <Stat icon={<AlertTriangle />} label="Escalated compliance" value={complianceSummary.escalated || 0} tone="red" />
+        <Stat icon={<FileSignature />} label="Pending affidavits" value={followupSummary.affidavitPending || 0} tone="orange" />
+        <Stat icon={<AlertTriangle />} label="Urgent contempt risk" value={followupSummary.contemptUrgent || 0} tone="red" />
+        <Stat icon={<UserCheck />} label="Unconfirmed appearances" value={followupSummary.appearanceUnconfirmed || 0} tone="orange" />
       </div>
 
       <div className="panel">

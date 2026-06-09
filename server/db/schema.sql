@@ -118,3 +118,63 @@ CREATE TABLE IF NOT EXISTS compliance_tracker (
 CREATE INDEX IF NOT EXISTS idx_compliance_tracker_case ON compliance_tracker (case_no);
 CREATE INDEX IF NOT EXISTS idx_compliance_tracker_deadline ON compliance_tracker (deadline);
 CREATE INDEX IF NOT EXISTS idx_compliance_tracker_status ON compliance_tracker (status);
+
+CREATE TABLE IF NOT EXISTS affidavit_status (
+  id SERIAL PRIMARY KEY,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  police_station_id INTEGER REFERENCES police_stations(police_station_id),
+  io_name TEXT,
+  date_notice_received DATE,
+  date_remarks_sought DATE,
+  remarks_received_date DATE,
+  legal_vetting_done BOOLEAN NOT NULL DEFAULT FALSE,
+  affidavit_filed_date DATE,
+  delay_days INTEGER NOT NULL DEFAULT 0,
+  reason_for_delay TEXT,
+  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Filed', 'Delayed')),
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_affidavit_status_case ON affidavit_status (case_no);
+CREATE INDEX IF NOT EXISTS idx_affidavit_status_status ON affidavit_status (status);
+CREATE INDEX IF NOT EXISTS idx_affidavit_status_ps ON affidavit_status (police_station_id);
+
+CREATE TABLE IF NOT EXISTS contempt_risk (
+  id SERIAL PRIMARY KEY,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  order_date DATE,
+  compliance_deadline DATE NOT NULL,
+  nature_of_risk TEXT,
+  responsible_officer TEXT,
+  compliance_done BOOLEAN NOT NULL DEFAULT FALSE,
+  escalation_level TEXT NOT NULL DEFAULT 'None' CHECK (escalation_level IN ('None', 'ACP', 'DCP', 'JCP', 'CP')),
+  remarks TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_contempt_risk_case ON contempt_risk (case_no);
+CREATE INDEX IF NOT EXISTS idx_contempt_risk_deadline ON contempt_risk (compliance_deadline);
+CREATE INDEX IF NOT EXISTS idx_contempt_risk_done ON contempt_risk (compliance_done);
+
+CREATE TABLE IF NOT EXISTS personal_appearance (
+  id SERIAL PRIMARY KEY,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  officer_name TEXT NOT NULL,
+  rank TEXT,
+  appearance_date DATE NOT NULL,
+  court_hall TEXT,
+  appearance_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  order_after_appearance TEXT,
+  next_date DATE,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_personal_appearance_case ON personal_appearance (case_no);
+CREATE INDEX IF NOT EXISTS idx_personal_appearance_date ON personal_appearance (appearance_date);
+CREATE INDEX IF NOT EXISTS idx_personal_appearance_confirmed ON personal_appearance (appearance_confirmed);

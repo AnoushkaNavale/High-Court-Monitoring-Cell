@@ -5,6 +5,9 @@ import Dashboard from "./pages/Dashboard.jsx";
 import MasterHCRegister from "./pages/MasterHCRegister.jsx";
 import DailyCauseList from "./pages/DailyCauseList.jsx";
 import ComplianceTracker from "./pages/ComplianceTracker.jsx";
+import AffidavitStatus from "./pages/AffidavitStatus.jsx";
+import ContemptRisk from "./pages/ContemptRisk.jsx";
+import PersonalAppearance from "./pages/PersonalAppearance.jsx";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { apiGet, getStoredSession, setStoredSession } from "./lib/api.js";
@@ -60,6 +63,9 @@ export default function App() {
           {page === "register" && <MasterHCRegister token={session.token} />}
           {page === "dailyCauseList" && <DailyCauseList token={session.token} />}
           {page === "compliance" && <ComplianceTracker token={session.token} />}
+          {page === "affidavits" && <AffidavitStatus token={session.token} />}
+          {page === "contempt" && <ContemptRisk token={session.token} />}
+          {page === "appearance" && <PersonalAppearance token={session.token} />}
         </main>
       </div>
     </ProtectedRoute>

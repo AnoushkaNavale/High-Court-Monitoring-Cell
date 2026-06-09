@@ -1,4 +1,4 @@
-import { BarChart3, CalendarCheck, CalendarDays, FileText, LayoutDashboard, LogOut, Shield } from "lucide-react";
+import { AlertTriangle, BarChart3, CalendarCheck, CalendarDays, FileSignature, FileText, LayoutDashboard, LogOut, Shield, UserCheck } from "lucide-react";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
   return (
@@ -27,6 +27,18 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         <button className={page === "compliance" ? "active" : ""} onClick={() => setPage("compliance")}>
           <CalendarCheck size={18} />
           Compliance Tracker
+        </button>
+        <button className={page === "affidavits" ? "active" : ""} onClick={() => setPage("affidavits")}>
+          <FileSignature size={18} />
+          Affidavit Status
+        </button>
+        <button className={page === "contempt" ? "active" : ""} onClick={() => setPage("contempt")}>
+          <AlertTriangle size={18} />
+          Contempt Risk
+        </button>
+        <button className={page === "appearance" ? "active" : ""} onClick={() => setPage("appearance")}>
+          <UserCheck size={18} />
+          Personal Appearance
         </button>
         <button disabled title="Coming in the next phase">
           <BarChart3 size={18} />
