@@ -1,71 +1,106 @@
+```markdown
 # High Court Monitoring Cell (HCMC)
 
-Phase 1 scaffold for the West Zone High Court Monitoring Cell app.
+HCMC is a full-stack legal case monitoring and compliance tracking web app built for Bengaluru City Police, West Zone. It helps the High Court Monitoring Cell manage High Court cases, hearing dates, compliance deadlines, affidavits, contempt risks, and officer appearances.
 
-## What is implemented
+## Tech Stack
 
-- React/Vite frontend with login, sidebar, dashboard, and Master HC Register.
-- Express API with JWT login.
-- PostgreSQL schema for hierarchy, users, and `master_hc_register`.
-- Role-aware case scoping helpers.
-- Seed script that imports master data from `DivisionData.xlsx`.
-- Docker Compose PostgreSQL service on `localhost:55432`.
+- React + Vite
+- Node.js + Express
+- PostgreSQL
+- Docker Compose
+- JWT Authentication
+- ExcelJS + Multer for Excel upload
 
-## Local setup
+## Implemented Features
 
-1. Install dependencies:
+- Landing page and login
+- JWT-based authentication
+- Role-based access scoping
+- Police hierarchy seed data
+- Dashboard
+- Master HC Register
+- Excel upload for case import
+- Daily Cause List
+- Notification preview
+- Compliance Tracker
+- Affidavit Status
+- Contempt Risk
+- Personal Appearance
 
-```bash
+## Main Modules
+
+### Master HC Register
+Add, edit, search, filter, and import High Court cases through Excel upload.
+
+### Daily Cause List
+Generate and manage daily High Court listings based on hearing dates.
+
+### Compliance Tracker
+Track court directions, compliance deadlines, responsible officers, delay days, and escalations.
+
+### Affidavit Status
+Track affidavit preparation, legal vetting, filing status, and delays.
+
+### Contempt Risk
+Monitor contempt-risk cases, compliance deadlines, and escalation levels.
+
+### Personal Appearance
+Track officer appearance dates, confirmation status, court hall, and post-appearance orders.
+
+## Demo Login
+
+```text
+Email: joint.cp.west@hcmc.local
+Password: Hcmc@123
+```
+
+## Run Locally
+
+```powershell
 npm run install:all
-```
-
-2. Start PostgreSQL:
-
-```bash
 docker compose up -d postgres
-```
-
-3. Apply schema:
-
-```bash
 npm run db:schema
-```
-
-4. Seed hierarchy/users from Excel:
-
-```bash
 npm run db:seed
-```
-
-The seed script reads:
-
-```text
-C:\Users\admin\Downloads\DivisionData.xlsx
-```
-
-Seeded users use this local development password:
-
-```text
-Hcmc@123
-```
-
-Example login:
-
-```text
-joint.cp.west@hcmc.local
-```
-
-5. Start the app:
-
-```bash
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+Frontend:
 
-API: `http://localhost:5000/api`
+```text
+http://localhost:5173
+```
 
-## Notes
+Backend:
 
-- `PoliceStation: Honeywell` is skipped during seed because the source Excel row has missing/error values for division and zone.
-- Change `JWT_SECRET` and seeded passwords before any non-local use.
+```text
+http://localhost:5000/api
+```
+
+## Database Tables
+
+```text
+zones
+divisions
+sub_divisions
+police_stations
+users
+master_hc_register
+daily_cause_list
+compliance_tracker
+affidavit_status
+contempt_risk
+personal_appearance
+```
+
+## Remaining Work
+
+- Evening Preparation Log
+- Officer Legal Performance Tracker
+- Reports and analytics
+- Document Repository
+- Admin settings
+- Real SMS/WhatsApp alerts
+- Scheduled reminders
+- High Court cause-list auto-polling
+```
