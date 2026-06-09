@@ -42,3 +42,19 @@ export function apiPost(path, body, token) {
 export function apiPut(path, body, token) {
   return request(path, { method: "PUT", token, body: JSON.stringify(body) });
 }
+
+export async function apiUpload(path, formData, token) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Upload failed");
+  }
+  return data;
+}

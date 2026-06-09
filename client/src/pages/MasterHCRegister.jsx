@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Edit, Plus, RefreshCw, Search } from "lucide-react";
-import { apiGet, apiPost, apiPut } from "../lib/api.js";
+import { Edit, Plus, RefreshCw, Search, Upload } from "lucide-react";
+import { apiGet, apiPost, apiPut, apiUpload } from "../lib/api.js";
 
 const blankForm = {
   case_no: "",
@@ -30,6 +30,8 @@ export default function MasterHCRegister({ token }) {
   const [filters, setFilters] = useState({ search: "", policeStationId: "", riskLevel: "" });
   const [form, setForm] = useState(blankForm);
   const [editingId, setEditingId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadResult, setUploadResult] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -106,6 +108,30 @@ export default function MasterHCRegister({ token }) {
     }
   }
 
+  async function uploadCases(event) {
+    event.preventDefault();
+    if (!uploadFile) {
+      setError("Choose an .xlsx file first");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      const result = await apiUpload("/cases/upload", formData, token);
+      setUploadResult(result);
+      setNotice(`Imported ${result.importedCount} cases. Skipped ${result.skippedCount}. Errors ${result.errorCount}.`);
+      setUploadFile(null);
+      event.target.reset();
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <section>
       <div className="page-header">
@@ -121,6 +147,51 @@ export default function MasterHCRegister({ token }) {
 
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
+
+      <form className="upload-panel" onSubmit={uploadCases}>
+        <div>
+          <h2>Upload Master Register Excel</h2>
+          <p>Use the `Master_HC_Register` template sheet. Duplicate case numbers are skipped.</p>
+        </div>
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={(event) => setUploadFile(event.target.files?.[0] || null)}
+        />
+        <button type="submit" className="secondary">
+          <Upload size={16} />
+          Upload Cases
+        </button>
+      </form>
+
+      {uploadResult && (
+        <div className="import-summary">
+          <strong>Import Summary</strong>
+          <span>Imported: {uploadResult.importedCount}</span>
+          <span>Skipped: {uploadResult.skippedCount}</span>
+          <span>Errors: {uploadResult.errorCount}</span>
+          {!!uploadResult.errors?.length && (
+            <details>
+              <summary>View errors</summary>
+              <ul>
+                {uploadResult.errors.slice(0, 10).map((item) => (
+                  <li key={`${item.row}-${item.caseNo || item.message}`}>Row {item.row}: {item.caseNo ? `${item.caseNo} - ` : ""}{item.message}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {!!uploadResult.skipped?.length && (
+            <details>
+              <summary>View skipped rows</summary>
+              <ul>
+                {uploadResult.skipped.slice(0, 10).map((item) => (
+                  <li key={`${item.row}-${item.caseNo}`}>Row {item.row}: {item.caseNo} - {item.message}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
 
       <form className="case-form" onSubmit={saveCase}>
         <div className="form-title">

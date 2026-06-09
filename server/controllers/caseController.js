@@ -1,5 +1,6 @@
 const pool = require("../db/pool");
 const { scopeWhere } = require("../middleware/authMiddleware");
+const ExcelJS = require("exceljs");
 
 const editableFields = [
   "case_no",
@@ -25,11 +26,50 @@ const editableFields = [
 ];
 
 function toBool(value) {
-  return value === true || value === "true" || value === "Y" || value === "Yes";
+  return value === true || value === "true" || value === "Y" || value === "Yes" || value === "YES" || value === "1";
 }
 
 function dbValue(value) {
   return value === "" || value === undefined ? null : value;
+}
+
+function cleanText(value) {
+  if (value === null || value === undefined) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "object") {
+    if ("text" in value) return String(value.text || "").trim();
+    if ("result" in value) return cleanText(value.result);
+    if ("richText" in value) return value.richText.map((part) => part.text).join("").trim();
+    return "";
+  }
+  return String(value).trim();
+}
+
+function normalizeHeader(value) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function excelDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "number") {
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+  }
+  const text = cleanText(value);
+  if (!text) return null;
+  const parts = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (parts) {
+    const year = parts[3].length === 2 ? `20${parts[3]}` : parts[3];
+    const date = new Date(`${year}-${parts[2].padStart(2, "0")}-${parts[1].padStart(2, "0")}`);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+  }
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
 async function resolveStation(stationId) {
@@ -40,6 +80,33 @@ async function resolveStation(stationId) {
     [stationId]
   );
   return result.rows[0];
+}
+
+async function resolveStationByNameOrId(value) {
+  const text = cleanText(value);
+  if (!text) return null;
+  const numeric = Number(text);
+  if (Number.isFinite(numeric)) return resolveStation(numeric);
+
+  const result = await pool.query(
+    `SELECT police_station_id, division_id, sub_division_id
+     FROM police_stations
+     WHERE LOWER(station_name) = LOWER($1)
+     LIMIT 1`,
+    [text]
+  );
+  return result.rows[0];
+}
+
+function stationAllowedForUser(station, user, ioName = "") {
+  if (["JCP", "HCMC_STAFF", "SPP"].includes(user.role)) return true;
+  if (user.role === "DCP") return Number(station.division_id) === Number(user.division_id);
+  if (user.role === "ACP") return Number(station.sub_division_id) === Number(user.sub_division_id);
+  if (user.role === "PI") return Number(station.police_station_id) === Number(user.police_station_id);
+  if (user.role === "IO") {
+    return cleanText(ioName).toLowerCase() === cleanText(user.name).toLowerCase();
+  }
+  return false;
 }
 
 function caseSelect() {
@@ -131,6 +198,129 @@ async function createCase(req, res, next) {
   }
 }
 
+async function insertImportedCase(client, values) {
+  const fields = [
+    ...editableFields,
+    "division_id",
+    "sub_division_id",
+    "created_by",
+  ];
+  const placeholders = fields.map((_, index) => `$${index + 1}`);
+  return client.query(
+    `INSERT INTO master_hc_register (${fields.join(", ")})
+     VALUES (${placeholders.join(", ")})
+     ON CONFLICT (case_no) DO NOTHING
+     RETURNING *`,
+    fields.map((field) => dbValue(values[field]))
+  );
+}
+
+async function uploadCases(req, res, next) {
+  if (!req.file) {
+    return res.status(400).json({ message: "Upload an .xlsx file" });
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  const client = await pool.connect();
+
+  try {
+    await workbook.xlsx.load(req.file.buffer);
+    const sheet = workbook.getWorksheet("Master_HC_Register") || workbook.worksheets[0];
+    if (!sheet) return res.status(400).json({ message: "Workbook has no sheets" });
+
+    const headerRow = sheet.getRow(1);
+    const headers = {};
+    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      headers[colNumber] = normalizeHeader(cell.value);
+    });
+
+    const imported = [];
+    const skipped = [];
+    const errors = [];
+    await client.query("BEGIN");
+
+    for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+      const row = sheet.getRow(rowNumber);
+      const record = {};
+      let hasValue = false;
+
+      Object.entries(headers).forEach(([colNumber, header]) => {
+        if (!header) return;
+        const value = row.getCell(Number(colNumber)).value;
+        if (cleanText(value)) hasValue = true;
+        record[header] = value;
+      });
+
+      if (!hasValue) continue;
+
+      const caseNo = cleanText(record.case_no);
+      if (!caseNo) {
+        errors.push({ row: rowNumber, message: "Missing Case No" });
+        continue;
+      }
+
+      const station = await resolveStationByNameOrId(record.police_station || record.police_station_id);
+      if (!station) {
+        errors.push({ row: rowNumber, caseNo, message: "Police Station not found" });
+        continue;
+      }
+
+      if (!stationAllowedForUser(station, req.user, record.io_name)) {
+        errors.push({ row: rowNumber, caseNo, message: "Case is outside your access scope" });
+        continue;
+      }
+
+      const values = {
+        case_no: caseNo,
+        case_type: cleanText(record.case_type),
+        crime_no: cleanText(record.crime_no),
+        police_station_id: station.police_station_id,
+        division_id: station.division_id,
+        sub_division_id: station.sub_division_id,
+        sections: cleanText(record.sections),
+        petitioner_accused: cleanText(record.petitioner_accused),
+        io_name: cleanText(record.io_name),
+        sho: cleanText(record.sho),
+        acp: cleanText(record.acp),
+        dcp: cleanText(record.dcp),
+        spp_name: cleanText(record.spp_name),
+        stage: cleanText(record.stage) || "Pending",
+        next_hearing_date: excelDate(record.next_hearing_date),
+        disposed_date: excelDate(record.disposed_date),
+        interim_order: toBool(cleanText(record.interim_order)),
+        stay_on_arrest: toBool(cleanText(record.stay_on_arrest)),
+        personal_appearance_required: toBool(cleanText(record.personal_appearance || record.personal_appearance_required)),
+        risk_level: cleanText(record.risk_level) || "Green",
+        status: cleanText(record.status) || "Active",
+        remarks: cleanText(record.remarks),
+        created_by: req.user.id,
+      };
+
+      if (!["Red", "Orange", "Yellow", "Green"].includes(values.risk_level)) values.risk_level = "Green";
+      if (!["Active", "Disposed", "Stayed"].includes(values.status)) values.status = "Active";
+
+      const result = await insertImportedCase(client, values);
+      if (result.rowCount) imported.push({ row: rowNumber, caseNo });
+      else skipped.push({ row: rowNumber, caseNo, message: "Duplicate case number" });
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({
+      importedCount: imported.length,
+      skippedCount: skipped.length,
+      errorCount: errors.length,
+      imported,
+      skipped,
+      errors,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    next(error);
+  } finally {
+    client.release();
+  }
+}
+
 async function updateCase(req, res, next) {
   try {
     const id = Number(req.params.id);
@@ -186,4 +376,5 @@ module.exports = {
   listCases,
   createCase,
   updateCase,
+  uploadCases,
 };
