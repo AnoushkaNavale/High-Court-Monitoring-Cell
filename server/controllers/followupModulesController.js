@@ -171,8 +171,12 @@ function createModule(name) {
       }
 
       const values = normalizeValues(config, req.body);
+      for (const field of config.boolFields) if (!(field in values)) values[field] = false;
+      for (const field of config.numberFields) if (!(field in values)) values[field] = 0;
       if (name === "affidavit" && !values.police_station_id) values.police_station_id = masterCase.police_station_id;
       if (name === "affidavit" && !values.io_name) values.io_name = masterCase.io_name;
+      if (name === "affidavit" && !values.status) values.status = "Pending";
+      if (name === "contempt" && !values.escalation_level) values.escalation_level = "None";
 
       const fields = [...config.fields, "created_by"];
       const placeholders = fields.map((_, index) => `$${index + 1}`);

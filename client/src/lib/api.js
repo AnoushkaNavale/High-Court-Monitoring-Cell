@@ -58,3 +58,15 @@ export async function apiUpload(path, formData, token) {
   }
   return data;
 }
+
+export async function apiDownload(path, token, filename) {
+  const response = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!response.ok) throw new Error("Download failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

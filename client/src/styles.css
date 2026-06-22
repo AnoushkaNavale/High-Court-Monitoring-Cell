@@ -448,6 +448,7 @@ button:disabled {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
 }
 
 .brand {
@@ -806,6 +807,55 @@ tr.row-yellow {
   gap: 8px;
 }
 
+.header-actions,
+.automation-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tracker-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tracker-row {
+  display: grid;
+  grid-template-columns: 180px minmax(480px, 1fr) 220px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #1d3553;
+  border-radius: 8px;
+  background: #10243a;
+}
+
+.tracker-row > div:first-child span {
+  display: block;
+  color: #b7c5d8;
+  margin-top: 4px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.report-grid .panel {
+  margin-top: 0;
+}
+
+.automation-actions {
+  padding: 16px;
+  margin: 18px 0;
+  border: 1px solid #1d3553;
+  border-radius: 8px;
+  background: #10243a;
+}
+
 .empty {
   text-align: center;
   color: #b7c5d8;
@@ -829,6 +879,11 @@ tr.row-yellow {
   .upload-panel,
   .import-summary,
   .check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tracker-row,
+  .report-grid {
     grid-template-columns: 1fr;
   }
 }

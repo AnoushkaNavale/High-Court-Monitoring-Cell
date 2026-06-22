@@ -151,7 +151,7 @@ export default function MasterHCRegister({ token }) {
       <form className="upload-panel" onSubmit={uploadCases}>
         <div>
           <h2>Upload Master Register Excel</h2>
-          <p>Use the `Master_HC_Register` template sheet. Duplicate case numbers are skipped.</p>
+          <p>Supports `Master_HC_Register` templates and the `DBStructure.xlsx` `CaseList` sheet. Duplicate case numbers are skipped.</p>
         </div>
         <input
           type="file"

@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, CalendarCheck, CalendarDays, FileSignature, FileText, LayoutDashboard, LogOut, Shield, UserCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, Bell, CalendarCheck, CalendarDays, FileArchive, FileSignature, FileText, LayoutDashboard, ListChecks, LogOut, Settings, Shield, UserCheck, Users } from "lucide-react";
 
 export default function Navbar({ user, page, setPage, onLogout }) {
   return (
@@ -40,10 +40,15 @@ export default function Navbar({ user, page, setPage, onLogout }) {
           <UserCheck size={18} />
           Personal Appearance
         </button>
-        <button disabled title="Coming in the next phase">
+        <button className={page === "evening" ? "active" : ""} onClick={() => setPage("evening")}><ListChecks size={18}/>Evening Log</button>
+        <button className={page === "performance" ? "active" : ""} onClick={() => setPage("performance")}><Users size={18}/>Officer Performance</button>
+        <button className={page === "reports" ? "active" : ""} onClick={() => setPage("reports")}>
           <BarChart3 size={18} />
           Reports
         </button>
+        <button className={page === "documents" ? "active" : ""} onClick={() => setPage("documents")}><FileArchive size={18}/>Documents</button>
+        <button className={page === "settings" ? "active" : ""} onClick={() => setPage("settings")}><Settings size={18}/>Masters & Settings</button>
+        <button className={page === "automation" ? "active" : ""} onClick={() => setPage("automation")}><Bell size={18}/>Automation</button>
       </nav>
 
       <div className="user-card">

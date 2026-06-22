@@ -8,6 +8,7 @@ import ComplianceTracker from "./pages/ComplianceTracker.jsx";
 import AffidavitStatus from "./pages/AffidavitStatus.jsx";
 import ContemptRisk from "./pages/ContemptRisk.jsx";
 import PersonalAppearance from "./pages/PersonalAppearance.jsx";
+import { EveningPreparation, OfficerPerformance, AnalyticsReports, DocumentRepository, MastersSettings, AutomationCenter } from "./pages/RemainingModules.jsx";
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { apiGet, getStoredSession, setStoredSession } from "./lib/api.js";
@@ -66,6 +67,12 @@ export default function App() {
           {page === "affidavits" && <AffidavitStatus token={session.token} />}
           {page === "contempt" && <ContemptRisk token={session.token} />}
           {page === "appearance" && <PersonalAppearance token={session.token} />}
+          {page === "evening" && <EveningPreparation token={session.token} />}
+          {page === "performance" && <OfficerPerformance token={session.token} />}
+          {page === "reports" && <AnalyticsReports token={session.token} />}
+          {page === "documents" && <DocumentRepository token={session.token} />}
+          {page === "settings" && <MastersSettings token={session.token} />}
+          {page === "automation" && <AutomationCenter token={session.token} />}
         </main>
       </div>
     </ProtectedRoute>

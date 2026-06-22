@@ -122,6 +122,7 @@ async function createCompliance(req, res, next) {
       ...req.body,
       delay_days: toDelayDays(req.body.delay_days),
       escalated: toBool(req.body.escalated),
+      status: req.body.status || "Pending",
     };
     const fields = [...editableFields, "created_by"];
     const placeholders = fields.map((_, index) => `$${index + 1}`);

@@ -47,6 +47,7 @@ function cleanText(value) {
 
 function normalizeHeader(value) {
   return cleanText(value)
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/\(.*?\)/g, "")
     .replace(/[^a-z0-9]+/g, "_")
@@ -151,7 +152,7 @@ async function listCases(req, res, next) {
 
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const result = await pool.query(
-      `${caseSelect()} ${where} ORDER BY m.next_hearing_date NULLS LAST, m.sl_no DESC LIMIT 200`,
+      `${caseSelect()} ${where} ORDER BY m.next_hearing_date NULLS LAST, m.sl_no DESC LIMIT 500`,
       params
     );
     res.json({ cases: result.rows });
@@ -225,7 +226,7 @@ async function uploadCases(req, res, next) {
 
   try {
     await workbook.xlsx.load(req.file.buffer);
-    const sheet = workbook.getWorksheet("Master_HC_Register") || workbook.worksheets[0];
+    const sheet = workbook.getWorksheet("Master_HC_Register") || workbook.getWorksheet("CaseList") || workbook.worksheets[0];
     if (!sheet) return res.status(400).json({ message: "Workbook has no sheets" });
 
     const headerRow = sheet.getRow(1);
@@ -259,7 +260,7 @@ async function uploadCases(req, res, next) {
         continue;
       }
 
-      const station = await resolveStationByNameOrId(record.police_station || record.police_station_id);
+      const station = await resolveStationByNameOrId(record.police_station || record.police_station_id || record.ps);
       if (!station) {
         errors.push({ row: rowNumber, caseNo, message: "Police Station not found" });
         continue;
@@ -270,28 +271,29 @@ async function uploadCases(req, res, next) {
         continue;
       }
 
+      const presentStatus = cleanText(record.present_status);
       const values = {
         case_no: caseNo,
         case_type: cleanText(record.case_type),
-        crime_no: cleanText(record.crime_no),
+        crime_no: cleanText(record.crime_no || record.cr_no),
         police_station_id: station.police_station_id,
         division_id: station.division_id,
         sub_division_id: station.sub_division_id,
         sections: cleanText(record.sections),
-        petitioner_accused: cleanText(record.petitioner_accused),
+        petitioner_accused: cleanText(record.petitioner_accused || record.petitioner_name),
         io_name: cleanText(record.io_name),
         sho: cleanText(record.sho),
         acp: cleanText(record.acp),
         dcp: cleanText(record.dcp),
-        spp_name: cleanText(record.spp_name),
-        stage: cleanText(record.stage) || "Pending",
-        next_hearing_date: excelDate(record.next_hearing_date),
+        spp_name: cleanText(record.spp_name || record.ppnmae),
+        stage: cleanText(record.stage) || presentStatus || "Pending",
+        next_hearing_date: excelDate(record.next_hearing_date || record.next_date_of_hearing),
         disposed_date: excelDate(record.disposed_date),
         interim_order: toBool(cleanText(record.interim_order)),
         stay_on_arrest: toBool(cleanText(record.stay_on_arrest)),
         personal_appearance_required: toBool(cleanText(record.personal_appearance || record.personal_appearance_required)),
         risk_level: cleanText(record.risk_level) || "Green",
-        status: cleanText(record.status) || "Active",
+        status: cleanText(record.status) || (/disposed|closed/i.test(presentStatus) ? "Disposed" : "Active"),
         remarks: cleanText(record.remarks),
         created_by: req.user.id,
       };
@@ -306,6 +308,7 @@ async function uploadCases(req, res, next) {
 
     await client.query("COMMIT");
     res.status(201).json({
+      sheet: sheet.name,
       importedCount: imported.length,
       skippedCount: skipped.length,
       errorCount: errors.length,

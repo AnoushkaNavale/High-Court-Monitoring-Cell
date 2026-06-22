@@ -178,3 +178,118 @@ CREATE TABLE IF NOT EXISTS personal_appearance (
 CREATE INDEX IF NOT EXISTS idx_personal_appearance_case ON personal_appearance (case_no);
 CREATE INDEX IF NOT EXISTS idx_personal_appearance_date ON personal_appearance (appearance_date);
 CREATE INDEX IF NOT EXISTS idx_personal_appearance_confirmed ON personal_appearance (appearance_confirmed);
+
+CREATE TABLE IF NOT EXISTS evening_preparation_log (
+  id SERIAL PRIMARY KEY,
+  cause_list_date DATE NOT NULL,
+  case_no TEXT NOT NULL REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  case_type TEXT,
+  police_station_id INTEGER REFERENCES police_stations(police_station_id),
+  io_contacted BOOLEAN NOT NULL DEFAULT FALSE,
+  sho_contacted BOOLEAN NOT NULL DEFAULT FALSE,
+  acp_contacted BOOLEAN NOT NULL DEFAULT FALSE,
+  dcp_contacted BOOLEAN NOT NULL DEFAULT FALSE,
+  spp_briefed BOOLEAN NOT NULL DEFAULT FALSE,
+  case_file_traced BOOLEAN NOT NULL DEFAULT FALSE,
+  cd_updated BOOLEAN NOT NULL DEFAULT FALSE,
+  para_wise_remarks_ready BOOLEAN NOT NULL DEFAULT FALSE,
+  personal_appearance_required BOOLEAN NOT NULL DEFAULT FALSE,
+  risk_level TEXT NOT NULL DEFAULT 'Green' CHECK (risk_level IN ('Red', 'Orange', 'Yellow', 'Green')),
+  briefing_note_prepared BOOLEAN NOT NULL DEFAULT FALSE,
+  prepared_by TEXT,
+  time_completed TIMESTAMPTZ,
+  remarks TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (cause_list_date, case_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_evening_log_date ON evening_preparation_log (cause_list_date);
+
+CREATE TABLE IF NOT EXISTS officer_legal_performance (
+  id SERIAL PRIMARY KEY,
+  officer_name TEXT NOT NULL,
+  police_station_id INTEGER REFERENCES police_stations(police_station_id),
+  no_of_hc_cases INTEGER NOT NULL DEFAULT 0,
+  delayed_submissions INTEGER NOT NULL DEFAULT 0,
+  adverse_remarks INTEGER NOT NULL DEFAULT 0,
+  appreciations INTEGER NOT NULL DEFAULT 0,
+  avg_compliance_time_days NUMERIC(8,2) NOT NULL DEFAULT 0,
+  risk_category TEXT NOT NULL DEFAULT 'Low' CHECK (risk_category IN ('High', 'Medium', 'Low')),
+  remarks TEXT,
+  report_month DATE,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_officer_performance_ps ON officer_legal_performance (police_station_id);
+CREATE INDEX IF NOT EXISTS idx_officer_performance_risk ON officer_legal_performance (risk_category);
+
+CREATE TABLE IF NOT EXISTS document_repository (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  case_no TEXT REFERENCES master_hc_register(case_no) ON UPDATE CASCADE,
+  police_station_id INTEGER REFERENCES police_stations(police_station_id),
+  document_date DATE,
+  tags TEXT,
+  original_name TEXT NOT NULL,
+  stored_name TEXT NOT NULL,
+  mime_type TEXT,
+  file_size BIGINT,
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_category ON document_repository (category);
+CREATE INDEX IF NOT EXISTS idx_document_case ON document_repository (case_no);
+
+CREATE TABLE IF NOT EXISTS case_types (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS case_stages (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  description TEXT,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS notification_settings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  phone_number TEXT,
+  whatsapp_number TEXT,
+  sms_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notification_logs (
+  id SERIAL PRIMARY KEY,
+  case_no TEXT,
+  event_type TEXT NOT NULL,
+  channel TEXT NOT NULL DEFAULT 'Preview',
+  recipients TEXT,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Preview',
+  provider_response TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_logs_created ON notification_logs (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS poll_runs (
+  id SERIAL PRIMARY KEY,
+  source_url TEXT,
+  status TEXT NOT NULL,
+  cases_found INTEGER NOT NULL DEFAULT 0,
+  entries_created INTEGER NOT NULL DEFAULT 0,
+  details TEXT,
+  polled_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
