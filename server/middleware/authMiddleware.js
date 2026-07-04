@@ -2,6 +2,9 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
 
 function signUser(user) {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is required");
+  }
   return jwt.sign(
     {
       id: user.id,
@@ -13,7 +16,7 @@ function signUser(user) {
       name: user.name,
       email: user.email,
     },
-    process.env.JWT_SECRET || "local-dev-secret",
+    process.env.JWT_SECRET,
     { expiresIn: "8h" }
   );
 }
@@ -27,7 +30,8 @@ async function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || "local-dev-secret");
+    if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is required");
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
       `SELECT id, name, email, mobile_no, rank, role, zone_id, division_id,
               sub_division_id, police_station_id, active
@@ -45,6 +49,15 @@ async function requireAuth(req, res, next) {
   } catch (_error) {
     res.status(401).json({ message: "Invalid or expired token" });
   }
+}
+
+function allowRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "You do not have permission to perform this action" });
+    }
+    next();
+  };
 }
 
 function scopeWhere(user, alias = "m") {
@@ -75,4 +88,5 @@ module.exports = {
   requireAuth,
   signUser,
   scopeWhere,
+  allowRoles,
 };

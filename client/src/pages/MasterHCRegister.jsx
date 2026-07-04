@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Edit, Plus, RefreshCw, Search, Upload } from "lucide-react";
 import { apiGet, apiPost, apiPut, apiUpload } from "../lib/api.js";
+import Pagination from "../components/Pagination.jsx";
 
 const blankForm = {
   case_no: "",
@@ -24,7 +25,7 @@ const blankForm = {
   remarks: "",
 };
 
-export default function MasterHCRegister({ token }) {
+export default function MasterHCRegister({ token, role }) {
   const [masters, setMasters] = useState({ policeStations: [], divisions: [], subDivisions: [] });
   const [cases, setCases] = useState([]);
   const [filters, setFilters] = useState({ search: "", policeStationId: "", riskLevel: "" });
@@ -35,20 +36,25 @@ export default function MasterHCRegister({ token }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(filters).filter(([, value]) => value))
-      ).toString();
+      const query = new URLSearchParams({
+        ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value)),
+        page: String(page),
+        pageSize: "25",
+      }).toString();
       const [masterData, caseData] = await Promise.all([
         apiGet("/masters", token),
         apiGet(`/cases${query ? `?${query}` : ""}`, token),
       ]);
       setMasters(masterData);
       setCases(caseData.cases || []);
+      setPagination(caseData.pagination || null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -58,7 +64,7 @@ export default function MasterHCRegister({ token }) {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page]);
 
   const selectedStation = useMemo(
     () => masters.policeStations.find((item) => String(item.police_station_id) === String(form.police_station_id)),
@@ -148,7 +154,7 @@ export default function MasterHCRegister({ token }) {
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
 
-      <form className="upload-panel" onSubmit={uploadCases}>
+      {role === "PI" && <form className="upload-panel" onSubmit={uploadCases}>
         <div>
           <h2>Upload Master Register Excel</h2>
           <p>Supports `Master_HC_Register` templates and the `DBStructure.xlsx` `CaseList` sheet. Duplicate case numbers are skipped.</p>
@@ -162,9 +168,9 @@ export default function MasterHCRegister({ token }) {
           <Upload size={16} />
           Upload Cases
         </button>
-      </form>
+      </form>}
 
-      {uploadResult && (
+      {role === "PI" && uploadResult && (
         <div className="import-summary">
           <strong>Import Summary</strong>
           <span>Imported: {uploadResult.importedCount}</span>
@@ -267,7 +273,7 @@ export default function MasterHCRegister({ token }) {
           <option value="">All risks</option>
           {["Red", "Orange", "Yellow", "Green"].map((value) => <option key={value}>{value}</option>)}
         </select>
-        <button className="secondary" onClick={load}>Apply</button>
+        <button className="secondary" onClick={() => { setPage(1); if (page === 1) load(); }}>Apply</button>
       </div>
 
       <div className="table-wrap">
@@ -311,6 +317,7 @@ export default function MasterHCRegister({ token }) {
           </tbody>
         </table>
       </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
     </section>
   );
 }

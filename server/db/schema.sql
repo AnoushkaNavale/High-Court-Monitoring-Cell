@@ -279,9 +279,11 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   message TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'Preview',
   provider_response TEXT,
+  read_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_notification_logs_created ON notification_logs (created_at DESC);
 
 CREATE TABLE IF NOT EXISTS poll_runs (
@@ -292,4 +294,46 @@ CREATE TABLE IF NOT EXISTS poll_runs (
   entries_created INTEGER NOT NULL DEFAULT 0,
   details TEXT,
   polled_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  user_email TEXT,
+  action TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  status_code INTEGER NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  request_body JSONB,
+  duration_ms INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS import_issues (
+  id BIGSERIAL PRIMARY KEY,
+  source_file TEXT,
+  sheet_name TEXT,
+  row_number INTEGER,
+  case_no TEXT,
+  issue_type TEXT NOT NULL,
+  source_value TEXT,
+  details TEXT,
+  status TEXT NOT NULL DEFAULT 'Open' CHECK (status IN ('Open', 'Resolved', 'Ignored')),
+  resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_issues_status ON import_issues (status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_import_issues_source_row ON import_issues (source_file, sheet_name, row_number, issue_type);
+
+CREATE TABLE IF NOT EXISTS police_station_aliases (
+  alias_name TEXT PRIMARY KEY,
+  police_station_id INTEGER NOT NULL REFERENCES police_stations(police_station_id),
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

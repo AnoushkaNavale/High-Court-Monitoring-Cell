@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { requireAuth } = require("../middleware/authMiddleware");
+const { requireAuth, allowRoles } = require("../middleware/authMiddleware");
 const {
   listCompliance,
   createCompliance,
@@ -10,8 +10,9 @@ const {
 
 router.get("/", requireAuth, listCompliance);
 router.get("/summary", requireAuth, getComplianceSummary);
-router.post("/", requireAuth, createCompliance);
-router.put("/:id", requireAuth, updateCompliance);
-router.post("/:id/escalate", requireAuth, escalateCompliance);
+const operationalWriter = allowRoles("JCP", "HCMC_STAFF", "DCP", "ACP", "PI", "IO");
+router.post("/", requireAuth, operationalWriter, createCompliance);
+router.put("/:id", requireAuth, operationalWriter, updateCompliance);
+router.post("/:id/escalate", requireAuth, operationalWriter, escalateCompliance);
 
 module.exports = router;

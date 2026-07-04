@@ -1,5 +1,6 @@
 const pool = require("../db/pool");
 const { scopeWhere } = require("../middleware/authMiddleware");
+const { paginationFromQuery, paginationMeta } = require("../utils/pagination");
 
 const configs = {
   affidavit: {
@@ -153,8 +154,11 @@ function listModule(name) {
             ? "ORDER BY c.compliance_deadline ASC, c.id DESC"
             : "ORDER BY c.appearance_date ASC, c.id DESC";
 
-      const result = await pool.query(`${selectSql(config)} ${where} ${order} LIMIT 250`, params);
-      res.json({ [config.collection]: result.rows });
+      const { page, pageSize, offset } = paginationFromQuery(req.query);
+      const count = await pool.query(`SELECT COUNT(*)::int AS total FROM (${selectSql(config)} ${where}) scoped`, params);
+      params.push(pageSize, offset);
+      const result = await pool.query(`${selectSql(config)} ${where} ${order} LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
+      res.json({ [config.collection]: result.rows, pagination: paginationMeta(count.rows[0].total, page, pageSize) });
     } catch (error) {
       next(error);
     }

@@ -1,10 +1,10 @@
 const fs = require("fs");
 const path = require("path");
-const ExcelJS = require("exceljs");
-const PDFDocument = require("pdfkit");
 const bcrypt = require("bcryptjs");
 const pool = require("../db/pool");
 const { scopeWhere } = require("../middleware/authMiddleware");
+const { paginationFromQuery, paginationMeta } = require("../utils/pagination");
+const { requiredText, enumValue, validEmail } = require("../utils/validation");
 
 const boolFields = [
   "io_contacted", "sho_contacted", "acp_contacted", "dcp_contacted", "spp_briefed",
@@ -34,6 +34,33 @@ async function scopedCase(caseNo, user) {
     [caseNo, ...scope.values]
   );
   return result.rows[0];
+}
+
+function stationScopeWhere(user, alias = "ps") {
+  if (["JCP", "HCMC_STAFF", "SPP"].includes(user.role)) return { text: "", values: [] };
+  if (user.role === "DCP") return { text: ` AND ${alias}.division_id=$1`, values: [user.division_id] };
+  if (user.role === "ACP") return { text: ` AND ${alias}.sub_division_id=$1`, values: [user.sub_division_id] };
+  if (["PI", "IO"].includes(user.role)) return { text: ` AND ${alias}.police_station_id=$1`, values: [user.police_station_id] };
+  return { text: " AND 1=0", values: [] };
+}
+
+async function stationInScope(stationId, user) {
+  if (!stationId) return ["JCP", "HCMC_STAFF", "SPP"].includes(user.role);
+  const scope = stationScopeWhere(user, "ps");
+  const result = await pool.query(
+    `SELECT 1 FROM police_stations ps WHERE ps.police_station_id=$1 ${scope.text ? scope.text.replace("$1", "$2") : ""}`,
+    [stationId, ...scope.values]
+  );
+  return Boolean(result.rowCount);
+}
+
+function documentScopeWhere(user) {
+  if (["JCP", "HCMC_STAFF", "SPP"].includes(user.role)) return { text: "", values: [] };
+  if (user.role === "DCP") return { text: " AND COALESCE(m.division_id,ps.division_id)=$1", values: [user.division_id] };
+  if (user.role === "ACP") return { text: " AND COALESCE(m.sub_division_id,ps.sub_division_id)=$1", values: [user.sub_division_id] };
+  if (user.role === "PI") return { text: " AND COALESCE(m.police_station_id,ps.police_station_id)=$1", values: [user.police_station_id] };
+  if (user.role === "IO") return { text: " AND LOWER(m.io_name)=LOWER($1)", values: [user.name] };
+  return { text: " AND 1=0", values: [] };
 }
 
 const eveningFields = [
@@ -113,8 +140,9 @@ const performanceFields = [
 
 async function listPerformance(req, res, next) {
   try {
-    const params = [];
-    const filters = [];
+    const scope = stationScopeWhere(req.user, "ps");
+    const params = [...scope.values];
+    const filters = scope.text ? [scope.text.replace(" AND ", "")] : [];
     if (req.query.policeStationId) { params.push(req.query.policeStationId); filters.push(`p.police_station_id=$${params.length}`); }
     if (req.query.riskCategory) { params.push(req.query.riskCategory); filters.push(`p.risk_category=$${params.length}`); }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
@@ -130,9 +158,19 @@ async function listPerformance(req, res, next) {
 async function savePerformance(req, res, next) {
   try {
     const values = normalize(req.body);
+    if (!(await stationInScope(values.police_station_id, req.user))) {
+      return res.status(403).json({ message: "Police station is outside your access scope" });
+    }
     for (const f of ["no_of_hc_cases", "delayed_submissions", "adverse_remarks", "appreciations", "avg_compliance_time_days"]) values[f] = Number(values[f] || 0);
     const id = Number(req.params.id || 0);
     if (id) {
+      const scope = stationScopeWhere(req.user, "ps");
+      const existing = await pool.query(
+        `SELECT 1 FROM officer_legal_performance p JOIN police_stations ps ON ps.police_station_id=p.police_station_id
+         WHERE p.id=$1 ${scope.text ? scope.text.replace("$1", "$2") : ""}`,
+        [id, ...scope.values]
+      );
+      if (!existing.rowCount) return res.status(404).json({ message: "Performance record not found" });
       const result = await pool.query(
         `UPDATE officer_legal_performance SET ${performanceFields.map((f,i)=>`${f}=$${i+1}`).join(", ")}, updated_at=NOW() WHERE id=$${performanceFields.length+1} RETURNING *`,
         [...performanceFields.map(f=>dbValue(values[f])), id]
@@ -150,12 +188,14 @@ async function savePerformance(req, res, next) {
 
 async function analytics(req, res, next) {
   try {
+    const scope = scopeWhere(req.user, "m");
+    const where = scope.text ? `WHERE ${scope.text.replace(" AND ", "")}` : "";
     const [totals, byType, byStation, trend, outcomes] = await Promise.all([
-      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE status='Active')::int active, COUNT(*) FILTER (WHERE status='Disposed')::int disposed FROM master_hc_register`),
-      pool.query(`SELECT COALESCE(case_type,'Unspecified') label, COUNT(*)::int value FROM master_hc_register GROUP BY case_type ORDER BY value DESC LIMIT 12`),
-      pool.query(`SELECT ps.station_name label, COUNT(*)::int value FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id GROUP BY ps.station_name ORDER BY value DESC LIMIT 15`),
-      pool.query(`SELECT TO_CHAR(DATE_TRUNC('month',created_at),'YYYY-MM') label, COUNT(*)::int value FROM master_hc_register GROUP BY DATE_TRUNC('month',created_at) ORDER BY label`),
-      pool.query(`SELECT COUNT(*) FILTER (WHERE LOWER(case_type) LIKE '%bail%' AND status='Disposed')::int bail_disposed, COUNT(*) FILTER (WHERE LOWER(case_type) LIKE '%quash%' AND status='Disposed')::int quashing_disposed FROM master_hc_register`),
+      pool.query(`SELECT COUNT(*)::int total, COUNT(*) FILTER (WHERE m.status='Active')::int active, COUNT(*) FILTER (WHERE m.status='Disposed')::int disposed FROM master_hc_register m ${where}`, scope.values),
+      pool.query(`SELECT COALESCE(m.case_type,'Unspecified') label, COUNT(*)::int value FROM master_hc_register m ${where} GROUP BY m.case_type ORDER BY value DESC LIMIT 12`, scope.values),
+      pool.query(`SELECT ps.station_name label, COUNT(*)::int value FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id ${where} GROUP BY ps.station_name ORDER BY value DESC LIMIT 15`, scope.values),
+      pool.query(`SELECT TO_CHAR(DATE_TRUNC('month',m.created_at),'YYYY-MM') label, COUNT(*)::int value FROM master_hc_register m ${where} GROUP BY DATE_TRUNC('month',m.created_at) ORDER BY label`, scope.values),
+      pool.query(`SELECT COUNT(*) FILTER (WHERE LOWER(m.case_type) LIKE '%bail%' AND m.status='Disposed')::int bail_disposed, COUNT(*) FILTER (WHERE LOWER(m.case_type) LIKE '%quash%' AND m.status='Disposed')::int quashing_disposed FROM master_hc_register m ${where}`, scope.values),
     ]);
     res.json({ totals: totals.rows[0], byType: byType.rows, byStation: byStation.rows, monthlyTrend: trend.rows, outcomes: outcomes.rows[0] });
   } catch (error) { next(error); }
@@ -163,8 +203,10 @@ async function analytics(req, res, next) {
 
 async function exportAnalytics(req, res, next) {
   try {
+    const ExcelJS = require("exceljs");
     const workbook = new ExcelJS.Workbook();
-    const cases = await pool.query(`SELECT m.case_no, m.case_type, m.crime_no, ps.station_name, m.petitioner_accused, m.io_name, m.stage, m.next_hearing_date, m.risk_level, m.status FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id ORDER BY m.sl_no`);
+    const scope = scopeWhere(req.user, "m");
+    const cases = await pool.query(`SELECT m.case_no, m.case_type, m.crime_no, ps.station_name, m.petitioner_accused, m.io_name, m.stage, m.next_hearing_date, m.risk_level, m.status FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id WHERE 1=1 ${scope.text} ORDER BY m.sl_no`,scope.values);
     const sheet = workbook.addWorksheet("Master Register Report");
     sheet.columns = ["Case No","Case Type","Crime No","Police Station","Petitioner/Accused","IO Name","Stage","Next Hearing","Risk","Status"].map((header, i)=>({ header, key:`c${i}`, width: i===4 ? 28 : 18 }));
     for (const row of cases.rows) sheet.addRow(Object.fromEntries(Object.values(row).map((v,i)=>[`c${i}`,v])));
@@ -178,7 +220,9 @@ async function exportAnalytics(req, res, next) {
 
 async function exportAnalyticsPdf(req,res,next){
   try{
-    const [totals,stations]=await Promise.all([pool.query(`SELECT COUNT(*)::int total,COUNT(*) FILTER(WHERE status='Active')::int active,COUNT(*) FILTER(WHERE status='Disposed')::int disposed FROM master_hc_register`),pool.query(`SELECT ps.station_name,COUNT(*)::int cases FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id GROUP BY ps.station_name ORDER BY cases DESC LIMIT 20`)]);
+    const PDFDocument = require("pdfkit");
+    const scope=scopeWhere(req.user,"m");const where=scope.text?`WHERE ${scope.text.replace(" AND ","")}`:"";
+    const [totals,stations]=await Promise.all([pool.query(`SELECT COUNT(*)::int total,COUNT(*) FILTER(WHERE m.status='Active')::int active,COUNT(*) FILTER(WHERE m.status='Disposed')::int disposed FROM master_hc_register m ${where}`,scope.values),pool.query(`SELECT ps.station_name,COUNT(*)::int cases FROM master_hc_register m LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id ${where} GROUP BY ps.station_name ORDER BY cases DESC LIMIT 20`,scope.values)]);
     res.setHeader("Content-Type","application/pdf");res.setHeader("Content-Disposition","attachment; filename=hcmc-analytics-report.pdf");
     const doc=new PDFDocument({margin:48});doc.pipe(res);doc.fontSize(20).text("High Court Monitoring Cell - Analytical Report");doc.moveDown().fontSize(11).text(`Generated: ${new Date().toLocaleString("en-IN")}`);doc.moveDown().fontSize(14).text(`Total cases: ${totals.rows[0].total}`);doc.text(`Active: ${totals.rows[0].active}`);doc.text(`Disposed: ${totals.rows[0].disposed}`);doc.moveDown().fontSize(16).text("Police Station-wise Litigation");doc.moveDown(0.5);stations.rows.forEach((r,i)=>doc.fontSize(11).text(`${i+1}. ${r.station_name||"Unassigned"}: ${r.cases}`));doc.end();
   }catch(error){next(error);}
@@ -189,8 +233,56 @@ fs.mkdirSync(uploadDir, { recursive: true });
 
 async function listDocuments(req, res, next) {
   try {
-    const result = await pool.query(`SELECT d.*, ps.station_name AS police_station_name, u.name AS uploaded_by_name FROM document_repository d LEFT JOIN police_stations ps ON ps.police_station_id=d.police_station_id LEFT JOIN users u ON u.id=d.uploaded_by ORDER BY d.created_at DESC`);
+    const scope=documentScopeWhere(req.user);
+    const result = await pool.query(`SELECT d.*, ps.station_name AS police_station_name, u.name AS uploaded_by_name FROM document_repository d LEFT JOIN master_hc_register m ON m.case_no=d.case_no LEFT JOIN police_stations ps ON ps.police_station_id=COALESCE(d.police_station_id,m.police_station_id) LEFT JOIN users u ON u.id=d.uploaded_by WHERE 1=1 ${scope.text} ORDER BY d.created_at DESC`,scope.values);
     res.json({ documents: result.rows });
+  } catch (error) { next(error); }
+}
+
+async function listAlerts(req, res, next) {
+  try {
+    const { page, pageSize, offset } = paginationFromQuery(req.query);
+    const scope = scopeWhere(req.user, "m");
+    const scopeText = scope.text ? scope.text.replace(" AND ", " AND n.case_no IS NOT NULL AND ") : "";
+    const where = `WHERE 1=1 ${scopeText}`;
+    const params = [...scope.values];
+    if (req.query.search) {
+      params.push(`%${req.query.search}%`);
+    }
+    const searchText = req.query.search ? ` AND (n.message ILIKE $${params.length} OR n.event_type ILIKE $${params.length} OR n.case_no ILIKE $${params.length})` : "";
+    const [count, result, unread] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int total FROM notification_logs n LEFT JOIN master_hc_register m ON m.case_no=n.case_no ${where}${searchText}`, params),
+      pool.query(
+        `SELECT n.*, m.police_station_id, ps.station_name AS police_station_name
+         FROM notification_logs n
+         LEFT JOIN master_hc_register m ON m.case_no=n.case_no
+         LEFT JOIN police_stations ps ON ps.police_station_id=m.police_station_id
+         ${where}${searchText}
+         ORDER BY n.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, pageSize, offset]
+      ),
+      pool.query(`SELECT COUNT(*)::int total FROM notification_logs n LEFT JOIN master_hc_register m ON m.case_no=n.case_no ${where}${searchText} AND n.read_at IS NULL`, params),
+    ]);
+    res.json({
+      alerts: result.rows,
+      unread: unread.rows[0].total,
+      pagination: paginationMeta(count.rows[0].total, page, pageSize),
+    });
+  } catch (error) { next(error); }
+}
+
+async function markAlertsRead(req, res, next) {
+  try {
+    const scope = scopeWhere(req.user, "m");
+    const scopeText = scope.text ? scope.text.replace(" AND ", " AND n.case_no IS NOT NULL AND ") : "";
+    const result = await pool.query(
+      `UPDATE notification_logs n SET read_at=NOW()
+       FROM master_hc_register m
+       WHERE (n.case_no IS NULL OR m.case_no=n.case_no) AND n.read_at IS NULL ${scopeText}
+       RETURNING n.id`,
+      scope.values
+    );
+    res.json({ updated: result.rowCount });
   } catch (error) { next(error); }
 }
 
@@ -198,6 +290,13 @@ async function uploadDocument(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ message: "Choose a document" });
     const b = req.body;
+    if (b.case_no) {
+      const masterCase=await scopedCase(b.case_no,req.user);
+      if(!masterCase){fs.unlink(req.file.path,()=>{});return res.status(403).json({message:"Case is outside your access scope"});}
+      b.police_station_id ||= masterCase.police_station_id;
+    } else if (!(await stationInScope(b.police_station_id,req.user))) {
+      fs.unlink(req.file.path,()=>{});return res.status(403).json({message:"Police station is outside your access scope"});
+    }
     const result = await pool.query(
       `INSERT INTO document_repository (title,category,case_no,police_station_id,document_date,tags,original_name,stored_name,mime_type,file_size,uploaded_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
@@ -209,7 +308,8 @@ async function uploadDocument(req, res, next) {
 
 async function downloadDocument(req, res, next) {
   try {
-    const result = await pool.query(`SELECT * FROM document_repository WHERE id=$1`, [req.params.id]);
+    const scope=documentScopeWhere(req.user);
+    const result = await pool.query(`SELECT d.* FROM document_repository d LEFT JOIN master_hc_register m ON m.case_no=d.case_no LEFT JOIN police_stations ps ON ps.police_station_id=COALESCE(d.police_station_id,m.police_station_id) WHERE d.id=$1 ${scope.text?scope.text.replace("$1","$2"):""}`, [req.params.id,...scope.values]);
     if (!result.rowCount) return res.status(404).json({ message: "Document not found" });
     const doc = result.rows[0];
     res.download(path.join(uploadDir, doc.stored_name), doc.original_name);
@@ -227,11 +327,15 @@ async function settings(req, res, next) {
   } catch (error) { next(error); }
 }
 
-async function addCaseType(req,res,next){ try { const r=await pool.query(`INSERT INTO case_types(code,name) VALUES($1,$2) ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name RETURNING *`,[req.body.code,req.body.name]); res.status(201).json({item:r.rows[0]}); } catch(e){next(e);} }
-async function addCaseStage(req,res,next){ try { const r=await pool.query(`INSERT INTO case_stages(name,description) VALUES($1,$2) ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description RETURNING *`,[req.body.name,req.body.description]); res.status(201).json({item:r.rows[0]}); } catch(e){next(e);} }
+async function addCaseType(req,res,next){ try { const code=requiredText(req.body.code,"Case type code",30).toUpperCase(); const name=requiredText(req.body.name,"Case type name",150); const r=await pool.query(`INSERT INTO case_types(code,name) VALUES($1,$2) ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name RETURNING *`,[code,name]); res.status(201).json({item:r.rows[0]}); } catch(e){next(e);} }
+async function addCaseStage(req,res,next){ try { const name=requiredText(req.body.name,"Stage name",150); const r=await pool.query(`INSERT INTO case_stages(name,description) VALUES($1,$2) ON CONFLICT(name) DO UPDATE SET description=EXCLUDED.description RETURNING *`,[name,dbValue(req.body.description)]); res.status(201).json({item:r.rows[0]}); } catch(e){next(e);} }
 async function saveNotificationSetting(req,res,next){ try { const b=normalize(req.body); const r=await pool.query(`INSERT INTO notification_settings(user_id,phone_number,whatsapp_number,sms_enabled,whatsapp_enabled) VALUES($1,$2,$3,$4,$5) ON CONFLICT(user_id) DO UPDATE SET phone_number=EXCLUDED.phone_number,whatsapp_number=EXCLUDED.whatsapp_number,sms_enabled=EXCLUDED.sms_enabled,whatsapp_enabled=EXCLUDED.whatsapp_enabled,updated_at=NOW() RETURNING *`,[b.user_id,b.phone_number,b.whatsapp_number,b.sms_enabled,b.whatsapp_enabled]); res.json({item:r.rows[0]}); } catch(e){next(e);} }
 
-async function createUser(req,res,next){try{const b=req.body;const hash=await bcrypt.hash(b.password||"Hcmc@123",10);const r=await pool.query(`INSERT INTO users(name,email,password_hash,mobile_no,rank,role,zone_id,division_id,sub_division_id,police_station_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,name,email,role,active`,[b.name,b.email,hash,dbValue(b.mobile_no),dbValue(b.rank),b.role,dbValue(b.zone_id),dbValue(b.division_id),dbValue(b.sub_division_id),dbValue(b.police_station_id)]);res.status(201).json({user:r.rows[0]});}catch(error){next(error);}}
+async function createUser(req,res,next){try{const b=req.body;const name=requiredText(b.name,"Name",150);const email=validEmail(b.email);const password=requiredText(b.password,"Password",200);if(password.length<10)return res.status(400).json({message:"Password must be at least 10 characters"});const role=enumValue(b.role,"Role",["JCP","DCP","ACP","PI","IO","HCMC_STAFF","SPP"]);const hash=await bcrypt.hash(password,12);const r=await pool.query(`INSERT INTO users(name,email,password_hash,mobile_no,rank,role,zone_id,division_id,sub_division_id,police_station_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id,name,email,role,active`,[name,email,hash,dbValue(b.mobile_no),dbValue(b.rank),role,dbValue(b.zone_id),dbValue(b.division_id),dbValue(b.sub_division_id),dbValue(b.police_station_id)]);res.status(201).json({user:r.rows[0]});}catch(error){next(error);}}
 async function toggleUser(req,res,next){try{const r=await pool.query(`UPDATE users SET active=$1,updated_at=NOW() WHERE id=$2 RETURNING id,name,email,role,active`,[toBool(req.body.active),req.params.id]);res.json({user:r.rows[0]});}catch(error){next(error);}}
 
-module.exports = { listEveningLogs, saveEveningLog, generateEveningLogs, listPerformance, savePerformance, analytics, exportAnalytics, exportAnalyticsPdf, listDocuments, uploadDocument, downloadDocument, settings, addCaseType, addCaseStage, saveNotificationSetting, createUser, toggleUser, uploadDir };
+async function listAuditLogs(req,res,next){try{const {page,pageSize,offset}=paginationFromQuery(req.query);const [count,result]=await Promise.all([pool.query(`SELECT COUNT(*)::int total FROM audit_logs`),pool.query(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2`,[pageSize,offset])]);res.json({auditLogs:result.rows,pagination:paginationMeta(count.rows[0].total,page,pageSize)});}catch(error){next(error);}}
+async function listImportIssues(req,res,next){try{const status=req.query.status||"Open";const {page,pageSize,offset}=paginationFromQuery(req.query);const [count,result]=await Promise.all([pool.query(`SELECT COUNT(*)::int total FROM import_issues WHERE status=$1`,[status]),pool.query(`SELECT * FROM import_issues WHERE status=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,[status,pageSize,offset])]);res.json({issues:result.rows,pagination:paginationMeta(count.rows[0].total,page,pageSize)});}catch(error){next(error);}}
+async function resolveImportIssue(req,res,next){let client;try{const issue=await pool.query(`SELECT * FROM import_issues WHERE id=$1 AND status='Open'`,[req.params.id]);if(!issue.rowCount)return res.status(404).json({message:"Open import issue not found"});const station=await pool.query(`SELECT police_station_id FROM police_stations WHERE police_station_id=$1`,[req.body.police_station_id]);if(!station.rowCount)return res.status(400).json({message:"Invalid police station"});const sourceValue=requiredText(issue.rows[0].source_value,"Source station",200);client=await pool.connect();await client.query("BEGIN");await client.query(`INSERT INTO police_station_aliases(alias_name,police_station_id,created_by) VALUES($1,$2,$3) ON CONFLICT(alias_name) DO UPDATE SET police_station_id=EXCLUDED.police_station_id,created_by=EXCLUDED.created_by`,[sourceValue,req.body.police_station_id,req.user.id]);await client.query(`UPDATE import_issues SET status='Resolved',resolved_by=$1,resolved_at=NOW(),details=details||' Mapped to police_station_id '||$2 WHERE status='Open' AND LOWER(source_value)=LOWER($3)`,[req.user.id,req.body.police_station_id,sourceValue]);await client.query("COMMIT");res.json({message:`Mapped ${sourceValue}. Upload the workbook again to import the affected rows.`});}catch(error){if(client)await client.query("ROLLBACK").catch(()=>{});next(error);}finally{client?.release();}}
+
+module.exports = { listEveningLogs, saveEveningLog, generateEveningLogs, listPerformance, savePerformance, analytics, exportAnalytics, exportAnalyticsPdf, listAlerts, markAlertsRead, listDocuments, uploadDocument, downloadDocument, settings, addCaseType, addCaseStage, saveNotificationSetting, createUser, toggleUser, listAuditLogs, listImportIssues, resolveImportIssue, uploadDir };

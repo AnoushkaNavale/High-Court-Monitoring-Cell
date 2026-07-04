@@ -9,7 +9,11 @@
     "start": "node src/index.js",
     "db:schema": "node scripts/applySchema.js",
     "db:seed": "node scripts/seedDivisionData.js",
-    "check": "node --check src/index.js && node --check controllers/authController.js && node --check controllers/caseController.js && node --check controllers/dailyCauseListController.js && node --check controllers/complianceController.js && node --check controllers/followupModulesController.js && node --check controllers/operationsController.js && node --check controllers/automationController.js && node --check routes/caseRoutes.js && node --check routes/dailyCauseListRoutes.js && node --check routes/complianceRoutes.js && node --check routes/followupModulesRoutes.js && node --check routes/operationsRoutes.js && node --check routes/automationRoutes.js"
+    "db:seed-roles": "node scripts/seedRoleTestUsers.js",
+    "db:audit-known": "node scripts/recordKnownDataIssues.js",
+    "check": "node --check src/index.js && node --check controllers/authController.js && node --check controllers/masterController.js && node --check controllers/caseController.js && node --check controllers/dailyCauseListController.js && node --check controllers/complianceController.js && node --check controllers/followupModulesController.js && node --check controllers/operationsController.js && node --check controllers/automationController.js && node --check middleware/authMiddleware.js && node --check middleware/auditMiddleware.js && node --check middleware/securityMiddleware.js && node --check services/notificationProvider.js && node --check routes/caseRoutes.js && node --check routes/dailyCauseListRoutes.js && node --check routes/complianceRoutes.js && node --check routes/followupModulesRoutes.js && node --check routes/operationsRoutes.js && node --check routes/automationRoutes.js",
+    "test": "node --test test/*.test.js",
+    "test:roles": "node scripts/testRoles.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -24,5 +28,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }

@@ -1,5 +1,6 @@
 const pool = require("../db/pool");
 const { scopeWhere } = require("../middleware/authMiddleware");
+const { paginationFromQuery, paginationMeta } = require("../utils/pagination");
 
 const editableFields = [
   "listing_date",
@@ -87,14 +88,22 @@ async function listDailyCauseList(req, res, next) {
     }
 
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const { page, pageSize, offset } = paginationFromQuery(req.query);
+    const count = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM daily_cause_list dcl
+       JOIN master_hc_register m ON m.case_no = dcl.case_no
+       LEFT JOIN police_stations ps ON ps.police_station_id = dcl.police_station_id ${where}`,
+      params
+    );
+    params.push(pageSize, offset);
     const result = await pool.query(
       `${dailyCauseSelect()} ${where}
        ORDER BY dcl.listing_date DESC, dcl.id DESC
-       LIMIT 250`,
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
 
-    res.json({ entries: result.rows });
+    res.json({ entries: result.rows, pagination: paginationMeta(count.rows[0].total, page, pageSize) });
   } catch (error) {
     next(error);
   }

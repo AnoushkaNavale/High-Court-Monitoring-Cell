@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const multer = require("multer");
-const { requireAuth } = require("../middleware/authMiddleware");
+const { requireAuth, allowRoles } = require("../middleware/authMiddleware");
 const { listCases, createCase, updateCase, uploadCases } = require("../controllers/caseController");
 
 const upload = multer({
@@ -13,8 +13,10 @@ const upload = multer({
 });
 
 router.get("/", requireAuth, listCases);
-router.post("/upload", requireAuth, upload.single("file"), uploadCases);
-router.post("/", requireAuth, createCase);
-router.put("/:id", requireAuth, updateCase);
+const operationalWriter = allowRoles("JCP", "HCMC_STAFF", "DCP", "ACP", "PI", "IO");
+const piUploader = allowRoles("PI");
+router.post("/upload", requireAuth, piUploader, upload.single("file"), uploadCases);
+router.post("/", requireAuth, operationalWriter, createCase);
+router.put("/:id", requireAuth, operationalWriter, updateCase);
 
 module.exports = router;

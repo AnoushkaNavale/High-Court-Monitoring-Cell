@@ -1,6 +1,59 @@
-import { AlertTriangle, BarChart3, Bell, CalendarCheck, CalendarDays, FileArchive, FileSignature, FileText, LayoutDashboard, ListChecks, LogOut, Settings, Shield, UserCheck, Users } from "lucide-react";
+import { BarChart3, Bell, CalendarCheck, CalendarDays, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogOut, Moon, Settings, Shield, Sun } from "lucide-react";
+import { canAccessPage } from "../lib/permissions.js";
 
-export default function Navbar({ user, page, setPage, onLogout }) {
+const navSections = [
+  {
+    items: [
+      ["dashboard", "Dashboard", LayoutDashboard],
+      ["register", "HC Case Register", FileText],
+      ["dailyCauseList", "Daily Cause List", CalendarDays],
+      ["alerts", "Alerts & Notifications", Bell],
+    ],
+  },
+  {
+    title: "Quick View",
+    items: [
+      ["compliance", "Court Direction Status", CalendarCheck],
+      ["affidavits", "Affidavit Status", FileSignature],
+    ],
+  },
+  {
+    title: "Analytics",
+    items: [
+      ["reports", "Report Summary", BarChart3],
+      ["hcmcReports", "HCMC Reports", BarChart3],
+      ["audit", "Audit Logs", ListChecks],
+    ],
+  },
+  {
+    title: "Administration",
+    header: "Masters",
+    items: [
+      ["master-case-stages", "Case Stages", Settings],
+      ["master-case-types", "Case Types", Settings],
+      ["master-court-halls", "Court Halls", Settings],
+      ["master-designations", "Designations", Settings],
+      ["master-divisions", "Divisions", Settings],
+      ["master-hc-portal-config", "HC Portal Config", Settings],
+      ["master-nature-of-direction", "Nature of Direction", Settings],
+      ["master-affidavit-status", "Affidavit Status", Settings],
+      ["master-compliance-required", "Compliance required", Settings],
+      ["master-compliance-status", "Compliance status", Settings],
+      ["master-nature-of-risk", "Nature of risk", Settings],
+      ["master-order-after-appearance", "Order after appearance", Settings],
+      ["master-permissions", "Permissions", Settings],
+      ["master-police-stations", "Police Stations", Settings],
+      ["master-role-permissions", "Role Permissions", Settings],
+      ["master-roles", "Roles", Settings],
+      ["master-sub-divisions", "Sub Divisions", Settings],
+      ["master-zones", "Zones", Settings],
+    ],
+  },
+];
+
+export default function Navbar({ user, page, setPage, onLogout, theme, setTheme }) {
+  const darkMode = theme === "dark";
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -12,43 +65,22 @@ export default function Navbar({ user, page, setPage, onLogout }) {
       </div>
 
       <nav className="nav-links">
-        <button className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>
-          <LayoutDashboard size={18} />
-          Dashboard
-        </button>
-        <button className={page === "register" ? "active" : ""} onClick={() => setPage("register")}>
-          <FileText size={18} />
-          Master Register
-        </button>
-        <button className={page === "dailyCauseList" ? "active" : ""} onClick={() => setPage("dailyCauseList")}>
-          <CalendarDays size={18} />
-          Daily Cause List
-        </button>
-        <button className={page === "compliance" ? "active" : ""} onClick={() => setPage("compliance")}>
-          <CalendarCheck size={18} />
-          Compliance Tracker
-        </button>
-        <button className={page === "affidavits" ? "active" : ""} onClick={() => setPage("affidavits")}>
-          <FileSignature size={18} />
-          Affidavit Status
-        </button>
-        <button className={page === "contempt" ? "active" : ""} onClick={() => setPage("contempt")}>
-          <AlertTriangle size={18} />
-          Contempt Risk
-        </button>
-        <button className={page === "appearance" ? "active" : ""} onClick={() => setPage("appearance")}>
-          <UserCheck size={18} />
-          Personal Appearance
-        </button>
-        <button className={page === "evening" ? "active" : ""} onClick={() => setPage("evening")}><ListChecks size={18}/>Evening Log</button>
-        <button className={page === "performance" ? "active" : ""} onClick={() => setPage("performance")}><Users size={18}/>Officer Performance</button>
-        <button className={page === "reports" ? "active" : ""} onClick={() => setPage("reports")}>
-          <BarChart3 size={18} />
-          Reports
-        </button>
-        <button className={page === "documents" ? "active" : ""} onClick={() => setPage("documents")}><FileArchive size={18}/>Documents</button>
-        <button className={page === "settings" ? "active" : ""} onClick={() => setPage("settings")}><Settings size={18}/>Masters & Settings</button>
-        <button className={page === "automation" ? "active" : ""} onClick={() => setPage("automation")}><Bell size={18}/>Automation</button>
+        {navSections.map((section, index) => {
+          const visibleItems = section.items.filter(([id]) => canAccessPage(user?.role, id));
+          if (!visibleItems.length) return null;
+          return (
+            <div className="nav-section" key={section.title || index}>
+              {section.title && <span className="nav-section-title">{section.title}</span>}
+              {section.header && <div className="nav-group-header"><span>{section.header}</span><ChevronDown size={15} /></div>}
+              {visibleItems.map(([id, label, Icon]) => (
+                <button key={id} className={page === id ? "active" : ""} onClick={() => setPage(id)}>
+                  <Icon size={18} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="user-card">
@@ -56,6 +88,11 @@ export default function Navbar({ user, page, setPage, onLogout }) {
         <span>{user?.role}</span>
         <small>{user?.divisionName || user?.policeStationName || "West Zone"}</small>
       </div>
+
+      <button className="theme-toggle" onClick={() => setTheme(darkMode ? "light" : "dark")} aria-label="Toggle dark mode">
+        {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+        {darkMode ? "Light mode" : "Dark mode"}
+      </button>
 
       <button className="logout" onClick={onLogout}>
         <LogOut size={18} />

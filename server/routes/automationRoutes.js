@@ -1,8 +1,9 @@
 const router=require("express").Router();
-const {requireAuth}=require("../middleware/authMiddleware");
+const {requireAuth,allowRoles}=require("../middleware/authMiddleware");
 const c=require("../controllers/automationController");
-router.get("/status",requireAuth,c.automationStatus);
-router.post("/notifications",requireAuth,c.sendNotification);
-router.post("/run-reminders",requireAuth,c.runReminders);
-router.post("/poll-cause-list",requireAuth,c.pollCauseList);
+const operators=allowRoles("JCP","HCMC_STAFF");
+router.get("/status",requireAuth,operators,c.automationStatus);
+router.post("/notifications",requireAuth,operators,c.sendNotification);
+router.post("/run-reminders",requireAuth,operators,c.runReminders);
+router.post("/poll-cause-list",requireAuth,operators,c.pollCauseList);
 module.exports=router;

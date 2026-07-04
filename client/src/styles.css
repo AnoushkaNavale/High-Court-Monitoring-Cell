@@ -38,7 +38,23 @@ button {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(180deg, #08090b 0%, #111318 52%, #08090b 100%);
+    radial-gradient(circle at 50% -10%, rgba(148, 163, 184, 0.18), transparent 34%),
+    linear-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+    #f3f6fa;
+  background-size: auto, 96px 96px, 96px 96px, auto;
+  color: #111827;
+}
+
+.login-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.82), transparent 32%),
+    radial-gradient(circle at 18% 24%, rgba(148, 163, 184, 0.16), transparent 22%),
+    radial-gradient(circle at 78% 70%, rgba(148, 163, 184, 0.13), transparent 24%);
+  pointer-events: none;
 }
 
 .gradient-bg {
@@ -295,6 +311,109 @@ button {
   color: #ffffff;
 }
 
+.landing-screen {
+  background:
+    radial-gradient(circle at 50% -10%, rgba(148, 163, 184, 0.18), transparent 34%),
+    linear-gradient(rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px),
+    #f3f6fa;
+  background-size: auto, 96px 96px, 96px 96px, auto;
+  color: #111827;
+}
+
+.landing-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.82), transparent 32%),
+    radial-gradient(circle at 20% 24%, rgba(148, 163, 184, 0.16), transparent 22%),
+    radial-gradient(circle at 78% 70%, rgba(148, 163, 184, 0.13), transparent 24%);
+  pointer-events: none;
+}
+
+.landing-screen .spotlight-beam {
+  background:
+    radial-gradient(68.54% 68.72% at 55.02% 31.46%, rgba(17, 24, 39, 0.13) 0, rgba(17, 24, 39, 0.045) 52%, rgba(17, 24, 39, 0) 80%);
+}
+
+.landing-screen .spotlight-small {
+  background:
+    radial-gradient(50% 50% at 50% 50%, rgba(17, 24, 39, 0.08) 0, rgba(17, 24, 39, 0.025) 80%, transparent 100%);
+}
+
+.login-screen .spotlight-beam {
+  background:
+    radial-gradient(68.54% 68.72% at 55.02% 31.46%, rgba(17, 24, 39, 0.13) 0, rgba(17, 24, 39, 0.045) 52%, rgba(17, 24, 39, 0) 80%);
+}
+
+.login-screen .spotlight-small {
+  background:
+    radial-gradient(50% 50% at 50% 50%, rgba(17, 24, 39, 0.08) 0, rgba(17, 24, 39, 0.025) 80%, transparent 100%);
+}
+
+.landing-screen .landing-panel {
+  width: min(980px, 100%);
+  padding: 42px 28px;
+}
+
+.landing-screen .landing-kicker {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #d8e1ec;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.landing-screen .landing-kicker svg {
+  color: #374151;
+}
+
+.landing-screen .landing-panel h1 {
+  color: #111827;
+}
+
+.landing-screen .landing-panel p {
+  color: #4b5870;
+}
+
+.landing-screen .encrypted-char {
+  color: #6b7280;
+  text-shadow: 0 0 20px rgba(17, 24, 39, 0.14);
+}
+
+.landing-screen .revealed-char {
+  color: #111827;
+}
+
+.landing-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.landing-metrics span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #d8e1ec;
+  color: #4b5870;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.landing-screen .enter-button {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+}
+
+.landing-screen .enter-button:hover {
+  background: #374151;
+  border-color: #374151;
+}
+
 .enter-button {
   margin-top: 8px;
   min-width: 148px;
@@ -311,14 +430,14 @@ button {
 
 .login-panel {
   width: min(440px, 100%);
-  background: rgba(10, 10, 10, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d8e1ec;
   border-radius: 8px;
   padding: 34px;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.12);
   position: relative;
   z-index: 1;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
 }
 
 .login-mark {
@@ -327,18 +446,19 @@ button {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #171717;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e5e5e5;
+  background: #f8fbff;
+  border: 1px solid #d8e4f2;
+  color: #111827;
 }
 
 .login-form button {
-  border: 1px solid #5b626c;
-  background: #3b4048;
+  border: 1px solid #111827;
+  background: #111827;
+  color: #ffffff;
 }
 
 .login-form button:hover {
-  background: #464c55;
+  background: #374151;
 }
 
 h1,
@@ -355,6 +475,28 @@ p {
 .login-panel p,
 .muted {
   color: #b7c5d8;
+}
+
+.login-panel p {
+  color: #4b5870;
+}
+
+.login-panel label {
+  color: #475569;
+  font-weight: 700;
+}
+
+.login-panel input {
+  background: #e8f0fb;
+  color: #111827;
+  border: 1px solid #cfdae8;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.login-panel input:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
 }
 
 .login-form,
@@ -474,7 +616,29 @@ button:disabled {
 
 .nav-links {
   display: grid;
-  gap: 8px;
+  gap: 14px;
+}
+
+.nav-section {
+  display: grid;
+  gap: 7px;
+}
+
+.nav-section-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 8px 10px 2px;
+}
+
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted-strong);
+  font-weight: 800;
+  padding: 9px 10px;
 }
 
 .nav-links button,
@@ -530,6 +694,11 @@ button:disabled {
   gap: 14px;
 }
 
+.compact-stats {
+  grid-template-columns: repeat(2, minmax(160px, 260px));
+  margin-bottom: 18px;
+}
+
 .stat-card,
 .panel,
 .case-form,
@@ -578,6 +747,70 @@ button:disabled {
 .mini-table {
   display: grid;
   gap: 8px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 18px;
+}
+
+.calendar-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.calendar-tile {
+  display: grid;
+  gap: 6px;
+  min-height: 108px;
+  padding: 12px;
+  border: 1px solid #1d3553;
+  border-radius: 8px;
+  background: #071422;
+}
+
+.calendar-tile span,
+.calendar-tile small,
+.rank-row em {
+  color: #b7c5d8;
+}
+
+.calendar-tile small {
+  line-height: 1.35;
+}
+
+.rank-list {
+  display: grid;
+  gap: 8px;
+}
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  background: #071422;
+}
+
+.rank-row span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #1d3553;
+  color: #dbe7f5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rank-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mini-row {
@@ -708,6 +941,23 @@ button:disabled {
   gap: 12px;
   padding: 14px;
   margin-bottom: 14px;
+}
+
+.alert-filters,
+.audit-filters,
+.reference-filters {
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+}
+
+.reference-kicker {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--muted-strong);
+  font-weight: 800;
+}
+
+.reference-filters {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
 .filters label {
@@ -862,6 +1112,293 @@ tr.row-yellow {
   padding: 28px;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  color: #b7c5d8;
+}
+
+.pagination button {
+  min-width: 38px;
+  padding: 8px 10px;
+}
+
+.pagination button.active {
+  background: #f1f5f9;
+  color: #111318;
+}
+
+.app-shell {
+  --app-bg: #f3f6fa;
+  --surface: #ffffff;
+  --surface-soft: #f8fbff;
+  --surface-strong: #e8f0fb;
+  --border: #d8e1ec;
+  --border-strong: #cfdae8;
+  --text: #111827;
+  --muted: #4b5870;
+  --muted-strong: #334155;
+  --primary: #111827;
+  --primary-soft: #e8f0fb;
+  --primary-strong: #111827;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --success: #059669;
+  --success-soft: #d1fae5;
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: Inter, Manrope, "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+.app-shell[data-theme="dark"] {
+  --app-bg: #0f172a;
+  --surface: #111827;
+  --surface-soft: #0b1220;
+  --surface-strong: #16233a;
+  --border: #243247;
+  --border-strong: #334155;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --muted-strong: #cbd5e1;
+  --primary: #60a5fa;
+  --primary-soft: #172554;
+  --primary-strong: #93c5fd;
+  --danger: #fb7185;
+  --danger-soft: #4c0519;
+  --warning: #fbbf24;
+  --warning-soft: #451a03;
+  --success: #34d399;
+  --success-soft: #052e2b;
+}
+
+.app-shell .sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 1px 0 0 rgba(17, 24, 39, 0.02);
+}
+
+.app-shell .brand svg {
+  color: var(--primary);
+}
+
+.app-shell .brand span,
+.app-shell .user-card span,
+.app-shell .user-card small,
+.app-shell .page-header p,
+.app-shell .muted,
+.app-shell .stat-card span,
+.app-shell .calendar-tile span,
+.app-shell .calendar-tile small,
+.app-shell .rank-row em,
+.app-shell .tracker-row > div:first-child span,
+.app-shell .pagination,
+.app-shell .upload-panel p,
+.app-shell .notification-panel p {
+  color: var(--muted);
+}
+
+.app-shell .nav-links button,
+.app-shell .logout,
+.app-shell .theme-toggle {
+  color: var(--muted-strong);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.app-shell .nav-links button:hover,
+.app-shell .logout:hover,
+.app-shell .theme-toggle:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.app-shell .nav-links button.active {
+  background: var(--primary-soft);
+  border-color: #cfdae8;
+  color: var(--primary-strong);
+}
+
+.app-shell[data-theme="dark"] .nav-links button.active {
+  border-color: #1d4ed8;
+}
+
+.theme-toggle {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.mode-button {
+  min-width: 132px;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.16);
+}
+
+.app-shell .user-card,
+.app-shell .stat-card,
+.app-shell .panel,
+.app-shell .case-form,
+.app-shell .filters,
+.app-shell .table-wrap,
+.app-shell .notification-panel,
+.app-shell .upload-panel,
+.app-shell .import-summary,
+.app-shell .automation-actions,
+.app-shell .tracker-row {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.app-shell .content {
+  background: var(--app-bg);
+}
+
+.app-shell label {
+  color: var(--muted-strong);
+  font-weight: 700;
+}
+
+.app-shell input,
+.app-shell select,
+.app-shell textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+}
+
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.app-shell button,
+.app-shell .primary,
+.app-shell .secondary {
+  border-radius: 8px;
+}
+
+.app-shell .primary,
+.app-shell button:not(.logout):not(.theme-toggle):not(.icon-btn):not(.active),
+.app-shell .header-actions button:not(.secondary),
+.app-shell .form-actions button:not(.secondary) {
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  color: #ffffff;
+}
+
+.app-shell .secondary,
+.app-shell .icon-btn {
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+.app-shell .nav-links button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted-strong);
+}
+
+.app-shell .nav-links button.active {
+  background: var(--primary-soft);
+  border-color: #bfdbfe;
+  color: var(--primary-strong);
+}
+
+.app-shell .stat-card svg {
+  color: var(--success);
+}
+
+.app-shell .stat-card.red svg {
+  color: var(--danger);
+}
+
+.app-shell .stat-card.orange svg {
+  color: var(--warning);
+}
+
+.app-shell .stat-card.blue svg {
+  color: var(--primary);
+}
+
+.app-shell .calendar-tile,
+.app-shell .rank-row,
+.app-shell .mini-row,
+.app-shell .check-grid {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+
+.app-shell .rank-row span {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.app-shell th {
+  background: var(--surface-soft);
+  color: var(--muted-strong);
+  border-bottom-color: var(--border);
+}
+
+.app-shell td {
+  border-bottom-color: var(--border);
+}
+
+.app-shell tr.row-red {
+  background: var(--danger-soft);
+}
+
+.app-shell tr.row-orange,
+.app-shell tr.row-yellow {
+  background: var(--warning-soft);
+}
+
+.app-shell .risk.red {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.app-shell .risk.orange,
+.app-shell .risk.yellow {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.app-shell .risk.green {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.app-shell .error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+}
+
+.app-shell .notice {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+}
+
+.app-shell .pagination button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -884,6 +1421,10 @@ tr.row-yellow {
 
   .tracker-row,
   .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }

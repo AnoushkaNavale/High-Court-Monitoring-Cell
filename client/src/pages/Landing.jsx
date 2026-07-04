@@ -1,11 +1,11 @@
 import { ArrowRight, Shield } from "lucide-react";
 import EncryptedText from "../components/EncryptedText.jsx";
-import GradientBackground from "../components/GradientBackground.jsx";
+import Spotlight from "../components/Spotlight.jsx";
 
 export default function Landing({ onEnter }) {
   return (
     <main className="landing-screen">
-      <GradientBackground />
+      <Spotlight />
       <section className="landing-panel">
         <div className="landing-kicker">
           <Shield size={18} />
@@ -27,6 +27,12 @@ export default function Landing({ onEnter }) {
           Legal case monitoring, compliance tracking, and court coordination for
           West Zone High Court matters.
         </p>
+
+        <div className="landing-metrics" aria-label="System highlights">
+          <span>Register</span>
+          <span>Cause List</span>
+          <span>Compliance</span>
+        </div>
 
         <button className="enter-button" onClick={onEnter}>
           Enter

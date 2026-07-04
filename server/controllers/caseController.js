@@ -1,6 +1,7 @@
 const pool = require("../db/pool");
 const { scopeWhere } = require("../middleware/authMiddleware");
-const ExcelJS = require("exceljs");
+const { paginationFromQuery, paginationMeta } = require("../utils/pagination");
+const { requiredText, enumValue } = require("../utils/validation");
 
 const editableFields = [
   "case_no",
@@ -90,9 +91,10 @@ async function resolveStationByNameOrId(value) {
   if (Number.isFinite(numeric)) return resolveStation(numeric);
 
   const result = await pool.query(
-    `SELECT police_station_id, division_id, sub_division_id
-     FROM police_stations
-     WHERE LOWER(station_name) = LOWER($1)
+    `SELECT ps.police_station_id, ps.division_id, ps.sub_division_id
+     FROM police_stations ps
+     LEFT JOIN police_station_aliases a ON a.police_station_id=ps.police_station_id
+     WHERE LOWER(ps.station_name)=LOWER($1) OR LOWER(a.alias_name)=LOWER($1)
      LIMIT 1`,
     [text]
   );
@@ -151,11 +153,14 @@ async function listCases(req, res, next) {
     if (req.query.toDate) addFilter("m.next_hearing_date <= ?", req.query.toDate);
 
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const { page, pageSize, offset } = paginationFromQuery(req.query);
+    const count = await pool.query(`SELECT COUNT(*)::int AS total FROM master_hc_register m ${where}`, params);
+    params.push(pageSize, offset);
     const result = await pool.query(
-      `${caseSelect()} ${where} ORDER BY m.next_hearing_date NULLS LAST, m.sl_no DESC LIMIT 500`,
+      `${caseSelect()} ${where} ORDER BY m.next_hearing_date NULLS LAST, m.sl_no DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
-    res.json({ cases: result.rows });
+    res.json({ cases: result.rows, pagination: paginationMeta(count.rows[0].total, page, pageSize) });
   } catch (error) {
     next(error);
   }
@@ -163,6 +168,9 @@ async function listCases(req, res, next) {
 
 async function createCase(req, res, next) {
   try {
+    req.body.case_no = requiredText(req.body.case_no, "Case number", 150);
+    req.body.risk_level = enumValue(req.body.risk_level, "Risk level", ["Red", "Orange", "Yellow", "Green"], "Green");
+    req.body.status = enumValue(req.body.status, "Status", ["Active", "Disposed", "Stayed"], "Active");
     const station = await resolveStation(req.body.police_station_id);
     if (!station) return res.status(400).json({ message: "Invalid police station" });
 
@@ -221,6 +229,7 @@ async function uploadCases(req, res, next) {
     return res.status(400).json({ message: "Upload an .xlsx file" });
   }
 
+  const ExcelJS = require("exceljs");
   const workbook = new ExcelJS.Workbook();
   const client = await pool.connect();
 
@@ -262,6 +271,12 @@ async function uploadCases(req, res, next) {
 
       const station = await resolveStationByNameOrId(record.police_station || record.police_station_id || record.ps);
       if (!station) {
+        await client.query(
+          `INSERT INTO import_issues(source_file,sheet_name,row_number,case_no,issue_type,source_value,details)
+           VALUES($1,$2,$3,$4,'UNKNOWN_POLICE_STATION',$5,$6)
+           ON CONFLICT(source_file,sheet_name,row_number,issue_type) DO NOTHING`,
+          [req.file.originalname, sheet.name, rowNumber, caseNo, cleanText(record.police_station || record.police_station_id || record.ps), "Police station could not be matched to master data"]
+        );
         errors.push({ row: rowNumber, caseNo, message: "Police Station not found" });
         continue;
       }
@@ -340,6 +355,9 @@ async function updateCase(req, res, next) {
     }
 
     const values = { ...req.body };
+    if ("case_no" in values) values.case_no = requiredText(values.case_no, "Case number", 150);
+    if ("risk_level" in values) values.risk_level = enumValue(values.risk_level, "Risk level", ["Red", "Orange", "Yellow", "Green"]);
+    if ("status" in values) values.status = enumValue(values.status, "Status", ["Active", "Disposed", "Stayed"]);
     if (values.police_station_id) {
       const station = await resolveStation(values.police_station_id);
       if (!station) return res.status(400).json({ message: "Invalid police station" });

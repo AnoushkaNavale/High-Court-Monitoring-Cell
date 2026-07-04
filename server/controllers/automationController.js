@@ -1,21 +1,42 @@
 const pool = require("../db/pool");
+const { deliver, providerStatus } = require("../services/notificationProvider");
 
 async function deliverNotification({ caseNo, eventType, recipients, message, channel = "Preview" }) {
   let status = "Preview";
   let providerResponse = null;
-  const webhook = process.env.NOTIFICATION_WEBHOOK_URL;
-  if (webhook && channel !== "Preview") {
+  const destinations = Array.isArray(recipients)
+    ? recipients
+    : String(recipients || "").split(",").map((item) => item.trim()).filter(Boolean);
+  if (channel !== "Preview") {
     try {
-      const response = await fetch(webhook, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({caseNo,eventType,recipients,message,channel}) });
-      providerResponse = await response.text();
-      status = response.ok ? "Sent" : "Failed";
-    } catch (error) { status = "Failed"; providerResponse = error.message; }
+      if (!destinations.length) throw new Error(`No enabled ${channel} recipients are configured`);
+      const results = [];
+      for (const to of destinations) results.push(await deliver({ to, message, channel, caseNo, eventType }));
+      providerResponse = JSON.stringify(results);
+      status = results.every((result) => result.provider === "preview") ? "Preview" : "Sent";
+    } catch (error) {
+      status = "Failed";
+      providerResponse = error.message;
+    }
   }
   const result = await pool.query(
     `INSERT INTO notification_logs(case_no,event_type,channel,recipients,message,status,provider_response) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
     [caseNo,eventType,channel,Array.isArray(recipients)?recipients.join(", "):recipients,message,status,providerResponse]
   );
   return result.rows[0];
+}
+
+async function configuredRecipients(roles, channel) {
+  const whatsapp = String(channel).toLowerCase() === "whatsapp";
+  const enabledColumn = whatsapp ? "whatsapp_enabled" : "sms_enabled";
+  const numberColumn = whatsapp ? "whatsapp_number" : "phone_number";
+  const result = await pool.query(
+    `SELECT n.${numberColumn} destination FROM notification_settings n
+     JOIN users u ON u.id=n.user_id
+     WHERE n.${enabledColumn}=TRUE AND u.active=TRUE AND u.role=ANY($1) AND NULLIF(n.${numberColumn},'') IS NOT NULL`,
+    [roles]
+  );
+  return result.rows.map((row) => row.destination);
 }
 
 async function sendNotification(req,res,next){
@@ -26,9 +47,12 @@ async function sendNotification(req,res,next){
 async function runRemindersInternal(){
   const hearings = await pool.query(`SELECT case_no,next_hearing_date,io_name,police_station_id FROM master_hc_register WHERE status='Active' AND next_hearing_date=CURRENT_DATE+3`);
   const compliance = await pool.query(`SELECT case_no,deadline,responsible_officer FROM compliance_tracker WHERE status IN ('Pending','Delayed','Escalated') AND compliance_filed_date IS NULL AND deadline<=CURRENT_DATE+2`);
+  const channel=process.env.REMINDER_CHANNEL||"Preview";
+  const hearingRecipients=channel==="Preview"?"IO,PI,ACP,DCP":await configuredRecipients(["IO","PI","ACP","DCP"],channel);
+  const complianceRecipients=channel==="Preview"?"ACP,DCP":await configuredRecipients(["ACP","DCP"],channel);
   let created=0;
-  for(const item of hearings.rows){ await deliverNotification({caseNo:item.case_no,eventType:"HEARING_REMINDER",recipients:"IO,SHO,ACP,DCP",message:`HCMC Reminder: Case ${item.case_no} is listed on ${item.next_hearing_date.toISOString().slice(0,10)}. Please ensure readiness.`,channel:"Preview"}); created++; }
-  for(const item of compliance.rows){ await deliverNotification({caseNo:item.case_no,eventType:"COMPLIANCE_ESCALATION",recipients:"ACP,DCP",message:`HCMC Escalation: Compliance for ${item.case_no} is due by ${item.deadline.toISOString().slice(0,10)}. Responsible: ${item.responsible_officer||"Not assigned"}.`,channel:"Preview"}); created++; }
+  for(const item of hearings.rows){ await deliverNotification({caseNo:item.case_no,eventType:"HEARING_REMINDER",recipients:hearingRecipients,message:`HCMC Reminder: Case ${item.case_no} is listed on ${item.next_hearing_date.toISOString().slice(0,10)}. Please ensure readiness.`,channel}); created++; }
+  for(const item of compliance.rows){ await deliverNotification({caseNo:item.case_no,eventType:"COMPLIANCE_ESCALATION",recipients:complianceRecipients,message:`HCMC Escalation: Compliance for ${item.case_no} is due by ${item.deadline.toISOString().slice(0,10)}. Responsible: ${item.responsible_officer||"Not assigned"}.`,channel}); created++; }
   return { hearingReminders:hearings.rowCount, complianceEscalations:compliance.rowCount, logsCreated:created };
 }
 
@@ -54,7 +78,7 @@ async function pollCauseListInternal(listingDate){
 async function pollCauseList(req,res,next){ try{ res.json({run:await pollCauseListInternal(req.body.listingDate)}); }catch(error){next(error);} }
 
 async function automationStatus(req,res,next){
-  try{ const [polls,logs]=await Promise.all([pool.query(`SELECT * FROM poll_runs ORDER BY polled_at DESC LIMIT 20`),pool.query(`SELECT * FROM notification_logs ORDER BY created_at DESC LIMIT 50`)]); res.json({configured:{causeListUrl:Boolean(process.env.HC_CAUSE_LIST_URL),notificationWebhook:Boolean(process.env.NOTIFICATION_WEBHOOK_URL)},pollRuns:polls.rows,notificationLogs:logs.rows}); }
+  try{ const [polls,logs]=await Promise.all([pool.query(`SELECT * FROM poll_runs ORDER BY polled_at DESC LIMIT 20`),pool.query(`SELECT * FROM notification_logs ORDER BY created_at DESC LIMIT 50`)]); const notification=providerStatus(); res.json({configured:{causeListUrl:Boolean(process.env.HC_CAUSE_LIST_URL),causeListPortal:process.env.HC_CAUSE_LIST_PORTAL_URL||null,notificationProvider:notification.provider,notificationConfigured:notification.configured},pollRuns:polls.rows,notificationLogs:logs.rows}); }
   catch(error){next(error);}
 }
 

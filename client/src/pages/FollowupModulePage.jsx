@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Edit, Plus, RefreshCw, Search } from "lucide-react";
 import { apiGet, apiPost, apiPut } from "../lib/api.js";
+import Pagination from "../components/Pagination.jsx";
 
 const moduleConfigs = {
   affidavit: {
@@ -131,22 +132,23 @@ export default function FollowupModulePage({ token, module }) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const query = new URLSearchParams(
-        Object.fromEntries(Object.entries(filters).filter(([, value]) => value))
-      ).toString();
+      const query = new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value)), page: String(page), pageSize: "25" }).toString();
       const [masterData, caseData, moduleData] = await Promise.all([
         apiGet("/masters", token),
-        apiGet("/cases", token),
+        apiGet("/cases?pageSize=500", token),
         apiGet(`${config.endpoint}${query ? `?${query}` : ""}`, token),
       ]);
       setMasters(masterData);
       setCases(caseData.cases || []);
       setItems(moduleData[config.collection] || []);
+      setPagination(moduleData.pagination || null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -156,7 +158,7 @@ export default function FollowupModulePage({ token, module }) {
 
   useEffect(() => {
     load();
-  }, [module]);
+  }, [module, page]);
 
   const selectedCase = useMemo(
     () => cases.find((item) => item.case_no === form.case_no),
@@ -340,7 +342,7 @@ export default function FollowupModulePage({ token, module }) {
             <option key={station.police_station_id} value={station.police_station_id}>{station.station_name}</option>
           ))}
         </select>
-        <button className="secondary" onClick={load}>Apply</button>
+        <button className="secondary" onClick={() => { setPage(1); if (page === 1) load(); }}>Apply</button>
       </div>
 
       <div className="table-wrap">
@@ -371,6 +373,7 @@ export default function FollowupModulePage({ token, module }) {
           </tbody>
         </table>
       </div>
+      <Pagination pagination={pagination} onPageChange={setPage} />
     </section>
   );
 }

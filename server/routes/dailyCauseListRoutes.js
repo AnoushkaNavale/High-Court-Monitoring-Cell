@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { requireAuth } = require("../middleware/authMiddleware");
+const { requireAuth, allowRoles } = require("../middleware/authMiddleware");
 const {
   listDailyCauseList,
   createDailyCauseEntry,
@@ -9,9 +9,10 @@ const {
 } = require("../controllers/dailyCauseListController");
 
 router.get("/", requireAuth, listDailyCauseList);
-router.post("/", requireAuth, createDailyCauseEntry);
-router.post("/generate", requireAuth, generateDailyCauseList);
+const operationalWriter = allowRoles("JCP", "HCMC_STAFF", "DCP", "ACP", "PI", "IO");
+router.post("/", requireAuth, operationalWriter, createDailyCauseEntry);
+router.post("/generate", requireAuth, operationalWriter, generateDailyCauseList);
 router.post("/:id/notify-preview", requireAuth, previewNotification);
-router.put("/:id", requireAuth, updateDailyCauseEntry);
+router.put("/:id", requireAuth, operationalWriter, updateDailyCauseEntry);
 
 module.exports = router;
